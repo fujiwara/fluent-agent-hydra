@@ -12,27 +12,43 @@ const (
 )
 
 func main() {
-	tag := os.Args[1]
-	filenames := os.Args[2:]
-	log.Println("tag", tag, "filenames", filenames)
-
+	configFile := os.Args[1]
 	done := make(chan bool)
-	loggerPrimary, err := fluent.New(fluent.Config{
-		FluentPort: 24224,
-		FluentHost: "127.0.0.1",
-	})
-	loggerSecondary, err := fluent.New(fluent.Config{
-		FluentPort: 24225,
-		FluentHost: "127.0.0.1",
-	})
+
+	config, err := hydra.ReadConfig(configFile)
 	if err != nil {
-		log.Println("logger initialize failed", err)
+		log.Println("Can't load config", err)
+		os.Exit(1)
 	}
+
+	loggers := make([]*fluent.Fluent, len(config.Servers))
+	for i, server := range config.Servers {
+		logger, err := fluent.New(fluent.Config{Server: server})
+		if err != nil {
+			log.Println("[warning] Can't initialize fluentd server.", err)
+		}
+		loggers[i] = logger
+	}
+
 	ch := hydra.NewChannel()
-	for _, filename := range filenames {
-		go hydra.Trail(filename, tag, ch)
+	for _, logfile := range config.Logs {
+		var tag string
+		if config.TagPrefix != "" {
+			tag = config.TagPrefix + "." + logfile.Tag
+		} else {
+			tag = logfile.Tag
+		}
+		go hydra.Trail(logfile.File, tag, ch)
 	}
-	go hydra.Forward(ch, defaultMessageKey, loggerPrimary, loggerSecondary)
+
+	var fieldName string
+	if config.FieldName != "" {
+		fieldName = config.FieldName
+	} else {
+		fieldName = defaultMessageKey
+	}
+
+	go hydra.Forward(ch, fieldName, loggers...)
 
 	<-done
 }

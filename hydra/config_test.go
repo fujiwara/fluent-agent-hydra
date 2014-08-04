@@ -1,9 +1,9 @@
 package hydra_test
 
 import (
+	"fmt"
 	"github.com/fujiwara/fluent-agent-hydra/hydra"
 	"testing"
-	"fmt"
 )
 
 func TestReadConfig(t *testing.T) {

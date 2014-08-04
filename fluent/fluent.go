@@ -31,8 +31,7 @@ import (
 )
 
 const (
-	defaultHost                   = "127.0.0.1"
-	defaultPort                   = 24224
+	defaultServer                 = "127.0.0.1:24224"
 	defaultTimeout                = 3 * time.Second
 	defaultRetryWait              = 500
 	defaultMaxRetry               = 12
@@ -41,11 +40,10 @@ const (
 )
 
 type Config struct {
-	FluentPort int
-	FluentHost string
-	Timeout    time.Duration
-	RetryWait  int
-	MaxRetry   int
+	Server    string
+	Timeout   time.Duration
+	RetryWait int
+	MaxRetry  int
 }
 
 type Fluent struct {
@@ -58,11 +56,8 @@ type Fluent struct {
 
 // New creates a new Logger.
 func New(config Config) (f *Fluent, err error) {
-	if config.FluentHost == "" {
-		config.FluentHost = defaultHost
-	}
-	if config.FluentPort == 0 {
-		config.FluentPort = defaultPort
+	if config.Server == "" {
+		config.Server = defaultServer
 	}
 	if config.Timeout == 0 {
 		config.Timeout = defaultTimeout
@@ -116,12 +111,7 @@ func (f *Fluent) String() string {
 	} else {
 		state = "connected"
 	}
-	return fmt.Sprintf("*fluent.Fluent{server: '%s', state: '%s'}", f.FluentdAddr(), state)
-}
-
-// FluentAddr return fluentd address string e.g. "127.0.0.1:24224"
-func (f *Fluent) FluentdAddr() string {
-	return fmt.Sprintf("%s:%d", f.Config.FluentHost, f.Config.FluentPort)
+	return fmt.Sprintf("*fluent.Fluent{server: '%s', state: '%s'}", f.Server, state)
 }
 
 // IsReconnecting return true if a reconnecting process in progress.
@@ -133,7 +123,7 @@ func (f *Fluent) IsReconnecting() bool {
 
 // connect establishes a new connection using the specified transport.
 func (f *Fluent) connect() (err error) {
-	f.conn, err = net.DialTimeout("tcp", f.FluentdAddr(), f.Config.Timeout)
+	f.conn, err = net.DialTimeout("tcp", f.Server, f.Config.Timeout)
 	return
 }
 
@@ -145,12 +135,12 @@ func (f *Fluent) reconnect() {
 			f.mu.Lock()
 			f.reconnecting = false
 			f.mu.Unlock()
-			log.Println("[info] Successfully reconnected to", f.FluentdAddr())
+			log.Println("[info] Successfully reconnected to", f.Server)
 			break
 		} else {
 			waitN := math.Min(float64(i), float64(f.Config.MaxRetry))
 			waitTime := f.Config.RetryWait * e(defaultReconnectWaitIncreRate, waitN)
-			log.Printf("[info] Waiting %.1f sec to reconnect %s", float64(waitTime)/float64(1000), f.FluentdAddr())
+			log.Printf("[info] Waiting %.1f sec to reconnect %s", float64(waitTime)/float64(1000), f.Server)
 			time.Sleep(time.Duration(waitTime) * time.Millisecond)
 
 		}

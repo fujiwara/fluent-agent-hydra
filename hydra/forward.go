@@ -36,7 +36,7 @@ RECIEVE:
 				if err == nil {
 					continue RECIEVE // success
 				}
-				log.Println("[warning] Forwarding failed to", logger.FluentdAddr(), err)
+				log.Println("[warning] Forwarding failed to", logger.Server, err)
 			}
 			if first {
 				log.Printf(

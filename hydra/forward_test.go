@@ -5,12 +5,11 @@ import (
 	"github.com/fujiwara/fluent-agent-hydra/fluent"
 	"github.com/fujiwara/fluent-agent-hydra/hydra"
 	"github.com/ugorji/go/codec"
-	"log"
 	"io"
+	"log"
 	"math"
 	"net"
 	"reflect"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -25,13 +24,10 @@ var (
 
 func _TestForwardSingle(t *testing.T) {
 	numOfMessages = 0
-	host, port, mockCloser := runMockServer(t, 0)
-	logger, err := fluent.New(fluent.Config{
-		FluentHost: host,
-		FluentPort: port,
-	})
+	addr, mockCloser := runMockServer(t, "")
+	logger, err := fluent.New(fluent.Config{Server: addr})
 	if err != nil {
-		t.Errorf("can't create logger to %s:%d", host, port, err)
+		t.Errorf("can't create logger to %s", addr, err)
 	}
 
 	ch := hydra.NewChannel()
@@ -52,13 +48,10 @@ func _TestForwardSingle(t *testing.T) {
 
 func TestForwardReconnect(t *testing.T) {
 	numOfMessages = 0
-	host, port, mockCloser := runMockServer(t, 0)
-	logger, err := fluent.New(fluent.Config{
-		FluentHost: host,
-		FluentPort: port,
-	})
+	addr, mockCloser := runMockServer(t, "")
+	logger, err := fluent.New(fluent.Config{Server: addr})
 	if err != nil {
-		t.Error("can't create logger to %s:%d", host, port, err)
+		t.Error("can't create logger to %s", addr, err)
 	}
 	ch := hydra.NewChannel()
 	go hydra.Forward(ch, TestMessageKey, logger)
@@ -74,9 +67,9 @@ func TestForwardReconnect(t *testing.T) {
 	t.Log("waiting for shutdown complated 3 sec")
 	time.Sleep(3 * time.Second)
 
-	t.Log("restarting mock server on same port", port)
-	_, _, _ = runMockServer(t, port)
-	ch <- bulk   // Afeter unexpected server closing, first Write() will be succeeded and lost...
+	t.Log("restarting mock server on same addr", addr)
+	_, _ = runMockServer(t, addr)
+	ch <- bulk // Afeter unexpected server closing, first Write() will be succeeded and lost...
 	ch <- bulk
 	t.Log("waiting for reconnect & resend completed 5 sec")
 	time.Sleep(5 * time.Second)
@@ -86,20 +79,17 @@ func TestForwardReconnect(t *testing.T) {
 	}
 }
 
-func _TestForwardFailOver(t *testing.T) {
+func TestForwardFailOver(t *testing.T) {
 	numOfMessages = 0
 	loggers := make([]*fluent.Fluent, 2)
 	mockClosers := make([]chan bool, 2)
 
 	for i := 0; i < 2; i++ {
-		host, port, mockCloser := runMockServer(t, 0)
+		addr, mockCloser := runMockServer(t, "")
 		if i == 0 {
 			close(mockCloser) // shutdown primary server immediately
 		}
-		logger, err := fluent.New(fluent.Config{
-			FluentHost: host,
-			FluentPort: port,
-		})
+		logger, err := fluent.New(fluent.Config{Server: addr})
 		if i == 0 && err == nil {
 			t.Error("create logger must return err (server is down)")
 		} else if i == 1 && err != nil {
@@ -119,7 +109,7 @@ func _TestForwardFailOver(t *testing.T) {
 	bulk := hydra.NewBulkMessage(TestTag, &messageBytes)
 	ch <- bulk
 	time.Sleep(1 * time.Second)
-	
+
 	if numOfMessages != len(TestMessageLines) {
 		t.Error("insufficient recieved messages. sent", len(TestMessageLines), "recieved", numOfMessages)
 	}
@@ -127,8 +117,10 @@ func _TestForwardFailOver(t *testing.T) {
 	close(mockClosers[1])
 }
 
-func runMockServer(t *testing.T, port int) (string, int, chan bool) {
-	addr := fmt.Sprintf("127.0.0.1:%d", port)
+func runMockServer(t *testing.T, addr string) (string, chan bool) {
+	if addr == "" {
+		addr = "127.0.0.1:0"
+	}
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		t.Fatal(err)
@@ -163,10 +155,7 @@ func runMockServer(t *testing.T, port int) (string, int, chan bool) {
 		}
 	}()
 
-	addrs := strings.Split(l.Addr().String(), ":")
-	host := addrs[0]
-	port, _ = strconv.Atoi(addrs[1])
-	return host, port, ch
+	return l.Addr().String(), ch
 }
 
 func handleConn(conn net.Conn, t *testing.T) {

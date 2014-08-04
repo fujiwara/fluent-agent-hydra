@@ -11,18 +11,19 @@ import (
 func Trail(filename string, tag string, ch chan *BulkMessage) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Println("[FATAL] Couldn't create file watcher", err)
+		log.Println("[error] Couldn't create file watcher", err)
 		return
 	}
 	defer watcher.Close()
 
-	parent := filepath.Dir(filename)
-	log.Println("watching event for", parent)
+	parent := filepath.Dir(filename) + "/"
+	log.Println("[info] watching events for directory", parent)
 	err = watcher.Watch(parent)
 	if err != nil {
-		log.Println("[FATAL] Couldn't watch event for", parent, err)
+		log.Println("[error] Couldn't watch event for", parent, err)
 		return
 	}
+	log.Println("trying trail file", filename)
 	f := newTrailFile(filename, tag, SEEK_TAIL)
 	defer f.Close()
 
