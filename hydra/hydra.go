@@ -1,5 +1,9 @@
 package hydra
 
+import (
+	"bytes"
+)
+
 type BulkMessage struct {
 	Tag    string
 	Buffer *[]byte
@@ -14,3 +18,6 @@ func NewChannel() chan *BulkMessage {
 	return make(chan *BulkMessage, ChannelBufferLen)
 }
 
+func (b *BulkMessage) Messages() [][]byte {
+	return bytes.Split(*b.Buffer, LineSeparator)
+}

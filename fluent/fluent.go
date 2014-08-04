@@ -52,7 +52,7 @@ type Fluent struct {
 	conn         net.Conn
 	pending      []byte
 	reconnecting bool
-	mu           sync.RWMutex
+	mu           sync.Mutex
 }
 
 // New creates a new Logger.
@@ -119,7 +119,7 @@ func (f *Fluent) FluentdAddr() string {
 
 // IsReconnecting return true if a reconnecting process in progress.
 func (f *Fluent) IsReconnecting() bool {
-	f.mu.RLock()
+	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.reconnecting
 }
@@ -151,9 +151,11 @@ func (f *Fluent) reconnect() {
 
 func (f *Fluent) send(buffer []byte) (err error) {
 	if f.conn == nil {
+		log.Println("send() but conn is nil")
 		f.mu.Lock()
 		defer f.mu.Unlock()
 		if f.reconnecting == false {
+			log.Println("going to reconnect")
 			f.reconnecting = true
 			go f.reconnect()
 		}
