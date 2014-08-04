@@ -39,7 +39,7 @@ func TestForwardSingle(t *testing.T) {
 
 	message := strings.Join(TestMessageLines, "\n")
 	messageBytes := []byte(message)
-	bulk := &hydra.BulkMessage{TestTag, &messageBytes}
+	bulk := hydra.NewBulkMessage(TestTag, &messageBytes)
 	ch <- bulk
 	close(ch)
 	close(mockCloser)

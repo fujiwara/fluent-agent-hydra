@@ -116,7 +116,7 @@ func (f *File) tailAndSend(ch chan *BulkMessage) error {
 			sendBuf = append(sendBuf, readBuf[0:blockLen]...)
 			f.contBuf = readBuf[blockLen+1 : n]
 		}
-		ch <- &BulkMessage{f.Tag, &sendBuf}
+		ch <- NewBulkMessage(f.Tag, &sendBuf)
 	}
 	return nil
 }

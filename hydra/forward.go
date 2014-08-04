@@ -19,7 +19,7 @@ RECIEVE:
 			return
 		}
 		tag := bulk.Tag
-		messages := bulk.Messages()
+		messages := bulk.Messages
 		first := true
 		for {
 		LOGGER:
@@ -35,9 +35,8 @@ RECIEVE:
 			}
 			if first {
 				log.Printf(
-					"All loggers are unavailable. pending %d messages(%d bytes) tag:%s",
+					"All loggers are unavailable. pending %d messages tag:%s",
 					len(messages),
-					len(*bulk.Buffer),
 					tag,
 				)
 			}

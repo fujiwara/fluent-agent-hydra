@@ -99,12 +99,13 @@ func reciever(t *testing.T, ch chan *hydra.BulkMessage, tag string, resultCh cha
 		if bulk.Tag != "test" {
 			t.Errorf("got %v\nwant %v", bulk.Tag, "test")
 		}
-		buf := string(*bulk.Buffer)
-		log.Println("size:", len(buf), "buffer:", buf)
-		recieved = recieved + buf + "\n"
-		if strings.Index(buf, EOFMarker) != -1 {
-			resultCh <- recieved
-			return
+		for _, message := range bulk.Messages {
+			log.Println("message", string(message))
+			recieved = recieved + string(message) + string(hydra.LineSeparator)
+			if strings.Index(string(message), EOFMarker) != -1 {
+				resultCh <- recieved
+				return
+			}
 		}
 	}
 }

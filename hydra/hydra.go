@@ -5,8 +5,8 @@ import (
 )
 
 type BulkMessage struct {
-	Tag    string
-	Buffer *[]byte
+	Tag      string
+	Messages [][]byte
 }
 
 const (
@@ -18,6 +18,6 @@ func NewChannel() chan *BulkMessage {
 	return make(chan *BulkMessage, ChannelBufferLen)
 }
 
-func (b *BulkMessage) Messages() [][]byte {
-	return bytes.Split(*b.Buffer, LineSeparator)
+func NewBulkMessage(tag string, buf *[]byte) *BulkMessage {
+	return &BulkMessage{tag, bytes.Split(*buf, LineSeparator)}
 }
