@@ -1,0 +1,11 @@
+Servers = [ "127.0.0.1:24224", "127.0.0.1:24225" ]
+TagPrefix = "foo"
+FieldName = "msg"
+
+[[Logs]]
+Tag  = "tag1"
+File = "/tmp/foo.log"
+
+[[Logs]]
+Tag  = "tag2"
+File = "/tmp/bar.log"

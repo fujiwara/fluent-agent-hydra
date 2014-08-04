@@ -40,7 +40,7 @@ RECIEVE:
 			}
 			if first {
 				log.Printf(
-					"[warning] All loggers are unavailable. pending %d messages tag:%s",
+					"[warning] All servers are unavailable. pending %d messages tag:%s",
 					len(messages),
 					tag,
 				)
