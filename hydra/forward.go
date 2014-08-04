@@ -12,7 +12,7 @@ RECIEVE:
 	for {
 		bulk, ok := <-ch
 		if !ok {
-			log.Println("shutdown forward process")
+			log.Println("[info] shutdown forward process")
 			for _, logger := range loggers {
 				logger.Close()
 			}
@@ -21,21 +21,26 @@ RECIEVE:
 		tag := bulk.Tag
 		messages := bulk.Messages
 		first := true
+		packed, err := fluent.NewBulkMessages(tag, messageKey, messages)
+		if err != nil {
+			log.Println("[error] Can't create msgpack object", err)
+			continue RECIEVE
+		}
 		for {
 		LOGGER:
 			for _, logger := range loggers {
 				if logger.IsReconnecting() {
 					continue LOGGER
 				}
-				err := logger.PostBulkMessages(tag, messageKey, messages)
+				err := logger.Send(packed)
 				if err == nil {
 					continue RECIEVE // success
 				}
-				log.Println("Error on forwarding to", logger.FluentdAddr(), err)
+				log.Println("[warning] Forwarding failed to", logger.FluentdAddr(), err)
 			}
 			if first {
 				log.Printf(
-					"All loggers are unavailable. pending %d messages tag:%s",
+					"[warning] All loggers are unavailable. pending %d messages tag:%s",
 					len(messages),
 					tag,
 				)

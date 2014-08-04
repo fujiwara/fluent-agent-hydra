@@ -37,6 +37,7 @@ const (
 	defaultRetryWait              = 500
 	defaultMaxRetry               = 12
 	defaultReconnectWaitIncreRate = 1.5
+	debug                         = false
 )
 
 type Config struct {
@@ -77,24 +78,20 @@ func New(config Config) (f *Fluent, err error) {
 	return
 }
 
-// PostBulkMessages post multi messages by packed one MessagePack object.
-func (f *Fluent) PostBulkMessages(tag string, key string, messages [][]byte) error {
+// NewBulkMessages creates a packed MessagePack object from tag, key, messages.
+func NewBulkMessages(tag string, key string, messages [][]byte) ([]byte, error) {
 	timeUnix := time.Now().Unix()
 	buffer := make([]byte, 0, len(messages)*1024)
 	for _, message := range messages {
 		msg := []interface{}{tag, timeUnix, map[string][]byte{key: message}}
 		if data, dumperr := toMsgpack(msg); dumperr != nil {
 			fmt.Println("fluent#Post: Can't convert to msgpack:", msg, dumperr)
-			return dumperr
+			return nil, dumperr
 		} else {
 			buffer = append(buffer, data...)
 		}
 	}
-	if err := f.send(buffer); err != nil {
-		f.Close()
-		return err
-	}
-	return nil
+	return buffer, nil
 }
 
 // Close closes the connection.
@@ -110,6 +107,16 @@ func (f *Fluent) Close() (err error) {
 		f.conn = nil
 	}
 	return
+}
+
+func (f *Fluent) String() string {
+	var state string
+	if f.IsReconnecting() {
+		state = "reconnecting"
+	} else {
+		state = "connected"
+	}
+	return fmt.Sprintf("*fluent.Fluent{server: '%s', state: '%s'}", f.FluentdAddr(), state)
 }
 
 // FluentAddr return fluentd address string e.g. "127.0.0.1:24224"
@@ -131,38 +138,40 @@ func (f *Fluent) connect() (err error) {
 }
 
 func (f *Fluent) reconnect() {
+	log.Println("[info] Trying reconnect")
 	for i := 0; ; i++ {
 		err := f.connect()
 		if err == nil {
 			f.mu.Lock()
 			f.reconnecting = false
 			f.mu.Unlock()
-			log.Println("Successfully reconnected to", f.FluentdAddr())
+			log.Println("[info] Successfully reconnected to", f.FluentdAddr())
 			break
 		} else {
 			waitN := math.Min(float64(i), float64(f.Config.MaxRetry))
 			waitTime := f.Config.RetryWait * e(defaultReconnectWaitIncreRate, waitN)
-			log.Printf("Waiting %.1f sec to reconnect %s", float64(waitTime)/float64(1000), f.FluentdAddr())
+			log.Printf("[info] Waiting %.1f sec to reconnect %s", float64(waitTime)/float64(1000), f.FluentdAddr())
 			time.Sleep(time.Duration(waitTime) * time.Millisecond)
 
 		}
 	}
 }
 
-func (f *Fluent) send(buffer []byte) (err error) {
+func (f *Fluent) Send(buffer []byte) (err error) {
 	if f.conn == nil {
-		log.Println("send() but conn is nil")
 		f.mu.Lock()
 		defer f.mu.Unlock()
 		if f.reconnecting == false {
-			log.Println("going to reconnect")
 			f.reconnecting = true
 			go f.reconnect()
 		}
-		err = errors.New("Can't send logs, client is reconnecting")
+		err = errors.New("Can't send messages, client is reconnecting")
+		return
 	} else {
 		_, err = f.conn.Write(buffer)
+		if err != nil {
+			f.Close()
+		}
 	}
 	return
 }
-

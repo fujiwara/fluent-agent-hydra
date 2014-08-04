@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/fujiwara/fluent-agent-hydra/hydra"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"os"
 	"strings"
@@ -49,7 +48,7 @@ func TestTrail(t *testing.T) {
 	file.WriteString("first line is must be trailed...\n")
 	defer os.Remove(file.Name())
 
-	go fileWriter(file, Logs)
+	go fileWriter(t, file, Logs)
 
 	ch := hydra.NewChannel()
 	go hydra.Trail(file.Name(), "test", ch)
@@ -66,26 +65,26 @@ func TestTrail(t *testing.T) {
 	}
 }
 
-func fileWriter(file *os.File, logs []string) {
+func fileWriter(t *testing.T, file *os.File, logs []string) {
 	filename := file.Name()
 	time.Sleep(1 * time.Second) // wait for start Tail...
 
 	for _, line := range logs {
 		if strings.Index(line, RotateMarker) != -1 {
-			log.Println("fileWriter: rename file => file.old")
+			t.Log("fileWriter: rename file => file.old")
 			os.Rename(filename, filename+".old")
 			file.Close()
 			file, _ = os.OpenFile(filename, os.O_CREATE|os.O_WRONLY, 0644)
-			log.Println("fileWriter: re-opened file")
+			t.Log("fileWriter: re-opened file")
 		} else if strings.Index(line, TruncateMarker) != -1 {
 			time.Sleep(1 * time.Second)
-			log.Println("fileWriter: truncate(file, 0)")
+			t.Log("fileWriter: truncate(file, 0)")
 			os.Truncate(filename, 0)
 			file.Seek(int64(0), os.SEEK_SET)
 		}
 		_, err := file.WriteString(line)
 		if err != nil {
-			log.Println("write failed", err)
+			t.Log("write failed", err)
 		}
 		randSleep()
 	}
@@ -100,7 +99,7 @@ func reciever(t *testing.T, ch chan *hydra.BulkMessage, tag string, resultCh cha
 			t.Errorf("got %v\nwant %v", bulk.Tag, "test")
 		}
 		for _, message := range bulk.Messages {
-			log.Println("message", string(message))
+			t.Log("message", string(message))
 			recieved = recieved + string(message) + string(hydra.LineSeparator)
 			if strings.Index(string(message), EOFMarker) != -1 {
 				resultCh <- recieved
