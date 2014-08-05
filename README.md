@@ -12,6 +12,8 @@ go get github.com/fujiwara/fluent-agent-hydra/cmd/fluent-agent-hydra/
 
 Usage of fluent-agent-hydra
 
+![travis-ci](https://api.travis-ci.org/fujiwara/fluent-agent-hydra.svg?branch=master)
+
 ### Using configuration file
 
 ```
