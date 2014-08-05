@@ -30,17 +30,20 @@ type File struct {
 }
 
 func newTrailFile(path string, tag string, startPos int64) *File {
-	log.Println("attempt to open file", path)
 	seekTo := startPos
+	first := true
 	for {
 		f, err := openFile(path, seekTo)
 		if err == nil {
 			f.Tag = tag
-			log.Println("trailing file:", f.Path, "tag:", f.Tag)
+			log.Println("[info] Trailing file:", f.Path, "tag:", f.Tag)
 			return f
 		}
+		if first {
+			log.Println("[warning]", err, "Retrying...")
+		}
+		first = false
 		seekTo = SEEK_HEAD
-		log.Println("trying to open", path)
 		time.Sleep(OpenRetryInterval)
 	}
 }
@@ -66,7 +69,7 @@ func openFile(path string, startPos int64) (*File, error) {
 		pos, _ := file.Seek(startPos, os.SEEK_SET)
 		file.Position = pos
 	}
-	log.Println(file.Path, "Seeked position", file.Position)
+	log.Println("[info]", file.Path, "Seeked to", file.Position)
 	return file, nil
 }
 
@@ -74,13 +77,13 @@ func (f *File) restrict() error {
 	var err error
 	f.lastStat, err = f.Stat()
 	if err != nil {
-		log.Println("file stat failed", err)
+		log.Println("[error]", f.Path, "stat failed", err)
 		return err
 	}
 	if size := f.lastStat.Size(); size < f.Position {
 		pos, _ := f.Seek(int64(0), os.SEEK_SET)
 		f.Position = pos
-		log.Println(f.Path, "was truncated. seeked to", pos)
+		log.Println("[info]", f.Path, "was truncated. Seeked to", pos)
 	}
 	return nil
 }

@@ -14,14 +14,14 @@ RECIEVE:
 		if !ok {
 			log.Println("[info] shutdown forward process")
 			for _, logger := range loggers {
-				logger.Close()
+				logger.Shutdown()
 			}
 			return
 		}
 		tag := bulk.Tag
 		messages := bulk.Messages
 		first := true
-		packed, err := fluent.NewBulkMessages(tag, messageKey, messages)
+		packed, err := fluent.NewPackedForwardObject(tag, messageKey, messages)
 		if err != nil {
 			log.Println("[error] Can't create msgpack object", err)
 			continue RECIEVE
@@ -44,6 +44,7 @@ RECIEVE:
 					len(messages),
 					tag,
 				)
+				first = false
 			}
 			time.Sleep(1 * time.Second) // waiting for any logger will be reconnected
 		}
