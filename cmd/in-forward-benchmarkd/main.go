@@ -22,23 +22,25 @@ func main() {
 	flag.Parse()
 	counter := int64(0)
 	_, ch := runServer(port, &counter)
-	go func() {
-		c := time.Tick(1 * time.Second)
-		prev := int64(0)
-		for _ = range c {
-			n := atomic.LoadInt64(&counter)
-			if prev == n {
-				continue
-			}
-			log.Printf("[info] %d messages\n", n-prev)
-			prev = n
-		}
-	}()
+	go reporter(&counter)
 	<-ch
 }
 
+func reporter(counter *int64) {
+	c := time.Tick(1 * time.Second)
+	prev := int64(0)
+	for _ = range c {
+		n := atomic.LoadInt64(counter)
+		if prev == n {
+			continue
+		}
+		log.Printf("[info] %d messages\n", n-prev)
+		prev = n
+	}
+}
+
 func runServer(port int, counter *int64) (string, chan bool) {
-	addr := fmt.Sprintf("127.0.0.1:%d", port)
+	addr := fmt.Sprintf(":%d", port)
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		log.Fatal(err)
