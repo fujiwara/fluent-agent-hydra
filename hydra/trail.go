@@ -16,7 +16,7 @@ func Trail(filename string, tag string, ch chan *BulkMessage) {
 	}
 	defer watcher.Close()
 
-	parent := filepath.Dir(filename) + "/"
+	parent := filepath.Dir(filename)
 	log.Println("[info] watching events for directory", parent)
 	err = watcher.Watch(parent)
 	if err != nil {
