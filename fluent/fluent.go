@@ -48,11 +48,11 @@ type Config struct {
 
 type Fluent struct {
 	Config
-	conn         net.Conn
-	pending      []byte
-	reconnecting bool
+	conn            net.Conn
+	pending         []byte
+	reconnecting    bool
 	cancelReconnect chan bool
-	mu           sync.Mutex
+	mu              sync.Mutex
 }
 
 // New creates a new Logger.
@@ -70,8 +70,8 @@ func New(config Config) (f *Fluent, err error) {
 		config.MaxRetry = defaultMaxRetry
 	}
 	f = &Fluent{
-		Config: config,
-		reconnecting: false,
+		Config:          config,
+		reconnecting:    false,
 		cancelReconnect: make(chan bool),
 	}
 	err = f.connect()
@@ -197,7 +197,7 @@ func (f *Fluent) reconnect() {
 
 		select { // wait for timeout or cancel
 		case _, ok := <-f.cancelReconnect:
-			if (!ok) {
+			if !ok {
 				f.mu.Lock()
 				f.reconnecting = false
 				f.mu.Unlock()

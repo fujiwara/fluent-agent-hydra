@@ -29,8 +29,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ugorji/go/codec"
-	"net"
 	"io"
+	"net"
 	"reflect"
 )
 

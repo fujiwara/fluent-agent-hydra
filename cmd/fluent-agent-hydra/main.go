@@ -26,6 +26,8 @@ func main() {
 		logger, err := fluent.New(fluent.Config{Server: server})
 		if err != nil {
 			log.Println("[warning] Can't initialize fluentd server.", err)
+		} else {
+			log.Println("[info] server", server)
 		}
 		loggers[i] = logger
 	}
