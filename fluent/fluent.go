@@ -51,6 +51,7 @@ type Fluent struct {
 	conn         net.Conn
 	pending      []byte
 	reconnecting bool
+	cancelReconnect chan bool
 	mu           sync.Mutex
 }
 
@@ -68,7 +69,11 @@ func New(config Config) (f *Fluent, err error) {
 	if config.MaxRetry == 0 {
 		config.MaxRetry = defaultMaxRetry
 	}
-	f = &Fluent{Config: config, reconnecting: false}
+	f = &Fluent{
+		Config: config,
+		reconnecting: false,
+		cancelReconnect: make(chan bool),
+	}
 	err = f.connect()
 	return
 }
@@ -104,6 +109,13 @@ func (f *Fluent) Close() (err error) {
 	return
 }
 
+func (f *Fluent) Shutdown() {
+	if f.IsReconnecting() {
+		close(f.cancelReconnect)
+	}
+	f.Close()
+}
+
 func (f *Fluent) String() string {
 	var state string
 	if f.IsReconnecting() {
@@ -136,13 +148,22 @@ func (f *Fluent) reconnect() {
 			f.reconnecting = false
 			f.mu.Unlock()
 			log.Println("[info] Successfully reconnected to", f.Server)
-			break
-		} else {
-			waitN := math.Min(float64(i), float64(f.Config.MaxRetry))
-			waitTime := f.Config.RetryWait * e(defaultReconnectWaitIncreRate, waitN)
-			log.Printf("[info] Waiting %.1f sec to reconnect %s", float64(waitTime)/float64(1000), f.Server)
-			time.Sleep(time.Duration(waitTime) * time.Millisecond)
+			return
+		}
+		waitN := math.Min(float64(i), float64(f.Config.MaxRetry))
+		waitTime := f.Config.RetryWait * e(defaultReconnectWaitIncreRate, waitN)
+		log.Printf("[info] Waiting %.1f sec to reconnect %s", float64(waitTime)/float64(1000), f.Server)
 
+		select { // wait for timeout or cancel
+		case _, ok := <-f.cancelReconnect:
+			if (!ok) {
+				f.mu.Lock()
+				f.reconnecting = false
+				f.mu.Unlock()
+				log.Println("[info] Accept cancel reconnect")
+				return
+			}
+		case <-time.After(time.Duration(waitTime) * time.Millisecond):
 		}
 	}
 }
@@ -151,7 +172,7 @@ func (f *Fluent) Send(buffer []byte) (err error) {
 	if f.conn == nil {
 		f.mu.Lock()
 		defer f.mu.Unlock()
-		if f.reconnecting == false {
+		if !f.reconnecting {
 			f.reconnecting = true
 			go f.reconnect()
 		}
