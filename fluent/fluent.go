@@ -78,8 +78,8 @@ func New(config Config) (f *Fluent, err error) {
 	return
 }
 
-// NewPackedObject creates a MessagePack object.
-func NewPackedObject(tag string, key string, messages [][]byte) ([]byte, error) {
+// NewPackedObject creates a MessagePack 'Message' object.
+func NewMessageObject(tag string, key string, messages [][]byte) ([]byte, error) {
 	timeUnix := time.Now().Unix()
 	buffer := make([]byte, 0, len(messages)*1024)
 	for _, message := range messages {
@@ -92,6 +92,24 @@ func NewPackedObject(tag string, key string, messages [][]byte) ([]byte, error) 
 		}
 	}
 	return buffer, nil
+}
+
+// NewForwardObject creates a MessagePack 'Forward' object.
+// see lib/fluent/plugin/in_forward.rb in fluentd
+func NewForwardObject(tag string, key string, messages [][]byte) ([]byte, error) {
+	timeUnix := time.Now().Unix()
+	msgs := make([]interface{}, len(messages))
+	for i, message := range messages {
+		msg := []interface{}{timeUnix, map[string][]byte{key: message}}
+		msgs[i] = msg
+	}
+	packedMsg := []interface{}{tag, msgs}
+	if data, dumperr := toMsgpack(packedMsg); dumperr != nil {
+		fmt.Println("Can't convert to msgpack")
+		return nil, dumperr
+	} else {
+		return data, nil
+	}
 }
 
 // NewPackedForwardObject creates a MessagePack 'PackedForward' object.
