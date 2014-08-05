@@ -9,10 +9,10 @@ type Config struct {
 	TagPrefix string
 	FieldName string
 	Servers   []string
-	Logs      []logfile
+	Logs      []ConfigLogfile
 }
 
-type logfile struct {
+type ConfigLogfile struct {
 	Tag  string
 	File string
 }

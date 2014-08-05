@@ -1,6 +1,8 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"github.com/fujiwara/fluent-agent-hydra/fluent"
 	"github.com/fujiwara/fluent-agent-hydra/hydra"
 	"log"
@@ -12,15 +14,62 @@ const (
 )
 
 func main() {
-	configFile := os.Args[1]
-	done := make(chan bool)
+	var (
+		configFile string
+		help       bool
+		fieldName  string
+	)
+	flag.StringVar(&configFile, "c", "", "configuration file path")
+	flag.BoolVar(&help, "h", false, "show help message")
+	flag.BoolVar(&help, "help", false, "show help message")
+	flag.StringVar(&fieldName, "f", defaultMessageKey, "fieldname of fluentd log message attribute (DEFAULT: message)")
+	flag.Parse()
 
-	config, err := hydra.ReadConfig(configFile)
-	if err != nil {
-		log.Println("Can't load config", err)
-		os.Exit(1)
+	if help {
+		usage()
 	}
+	done := make(chan bool)
+	if configFile != "" {
+		config, err := hydra.ReadConfig(configFile)
+		if err != nil {
+			log.Println("Can't load config", err)
+			os.Exit(2)
+		}
+		runWithConfig(config)
+	} else if args := flag.Args(); len(args) >= 3 {
+		config := newConfig(args, fieldName)
+		runWithConfig(config)
+	} else {
+		usage()
+	}
+	<-done
+}
 
+func usage() {
+	fmt.Println("Usage of fluent-agent-hydra")
+	fmt.Println("")
+	fmt.Println("  fluent-agent-hydra -c config.toml")
+	fmt.Println("  fluent-agent-hydra [options] TAG TARGET_FILE PRIMARY_SERVER SECONDARY_SERVER")
+	fmt.Println("")
+	flag.PrintDefaults()
+	os.Exit(1)
+}
+
+func newConfig(args []string, fieldName string) hydra.Config {
+	tag := args[0]
+	file := args[1]
+	servers := args[2:]
+
+	logs := make([]hydra.ConfigLogfile, 1)
+	logs[0] = hydra.ConfigLogfile{Tag: tag, File: file}
+	return hydra.Config{
+		Servers: servers,
+		Logs: logs,
+		FieldName: fieldName,
+	}
+}
+
+func runWithConfig(config hydra.Config) {
 	loggers := make([]*fluent.Fluent, len(config.Servers))
 	for i, server := range config.Servers {
 		logger, err := fluent.New(fluent.Config{Server: server})
@@ -51,6 +100,4 @@ func main() {
 	}
 
 	go hydra.Forward(ch, fieldName, loggers...)
-
-	<-done
 }
