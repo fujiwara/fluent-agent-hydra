@@ -78,20 +78,43 @@ func New(config Config) (f *Fluent, err error) {
 	return
 }
 
-// NewBulkMessages creates a packed MessagePack object from tag, key, messages.
-func NewBulkMessages(tag string, key string, messages [][]byte) ([]byte, error) {
+// NewPackedObject creates a MessagePack object.
+func NewPackedObject(tag string, key string, messages [][]byte) ([]byte, error) {
 	timeUnix := time.Now().Unix()
 	buffer := make([]byte, 0, len(messages)*1024)
 	for _, message := range messages {
 		msg := []interface{}{tag, timeUnix, map[string][]byte{key: message}}
 		if data, dumperr := toMsgpack(msg); dumperr != nil {
-			fmt.Println("fluent#Post: Can't convert to msgpack:", msg, dumperr)
+			fmt.Println("Can't convert to msgpack:", msg, dumperr)
 			return nil, dumperr
 		} else {
 			buffer = append(buffer, data...)
 		}
 	}
 	return buffer, nil
+}
+
+// NewPackedForwardObject creates a MessagePack 'PackedForward' object.
+// see lib/fluent/plugin/in_forward.rb in fluentd
+func NewPackedForwardObject(tag string, key string, messages [][]byte) ([]byte, error) {
+	timeUnix := time.Now().Unix()
+	buffer := make([]byte, 0, len(messages)*1024)
+	for _, message := range messages {
+		msg := []interface{}{timeUnix, map[string][]byte{key: message}}
+		if data, dumperr := toMsgpack(msg); dumperr != nil {
+			fmt.Println("Can't convert to msgpack:", msg, dumperr)
+			return nil, dumperr
+		} else {
+			buffer = append(buffer, data...)
+		}
+	}
+	packedMsg := []interface{}{tag, buffer}
+	if data, dumperr := toMsgpack(packedMsg); dumperr != nil {
+		fmt.Println("Can't convert to msgpack")
+		return nil, dumperr
+	} else {
+		return data, nil
+	}
 }
 
 // Close closes the connection.
