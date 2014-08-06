@@ -9,10 +9,19 @@ import (
 	"os"
 	"os/signal"
 	"runtime/pprof"
+	"syscall"
 )
 
 const (
 	defaultMessageKey = "message"
+)
+
+var (
+	trapSignals = []os.Signal{
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT}
 )
 
 func main() {
@@ -33,15 +42,14 @@ func main() {
 	if pprofile := os.Getenv("PPROF"); pprofile != "" {
 		f, err := os.Create(pprofile)
 		if err != nil {
-			log.Fatal("Can't create profiling stat file.", err)
+			log.Fatal("[error] Can't create profiling stat file.", err)
 		}
-		log.Println("profiling stat file", f.Name())
+		log.Println("[info] StartCPUProfile() stat file", f.Name())
 		pprof.StartCPUProfile(f)
 	}
 
 	done := make(chan os.Signal, 1)
-	signal.Notify(done, os.Interrupt)
-
+	signal.Notify(done, trapSignals...)
 	if configFile != "" {
 		config, err := hydra.ReadConfig(configFile)
 		if err != nil {
@@ -55,9 +63,8 @@ func main() {
 	} else {
 		usage()
 	}
-
 	sig := <-done
-	log.Println("SIGNAL", sig, "exit")
+	log.Println("[info] SIGNAL", sig, ", exit.")
 	pprof.StopCPUProfile()
 	os.Exit(0)
 }
