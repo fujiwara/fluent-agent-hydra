@@ -1,6 +1,6 @@
-TARGET = cmd/fluent-agent-hydra/fluent-agent-hydra
-
-all: test $(TARGET)
+all: test
+	go get github.com/fujiwara/fluent-agent-hydra/cmd/fluent-agent-hydra
+	go get github.com/fujiwara/fluent-agent-hydra/cmd/in-forward-benchmarkd
 
 .PHONY: test
 test:
@@ -9,5 +9,4 @@ test:
 get-deps:
 	go get -d -v ./fluent/ ./hydra/
 
-$(TARGET):
-	cd cmd/fluent-agent-hydra && go build
+
