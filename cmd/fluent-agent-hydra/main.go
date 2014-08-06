@@ -7,6 +7,8 @@ import (
 	"github.com/fujiwara/fluent-agent-hydra/hydra"
 	"log"
 	"os"
+	"os/signal"
+	"runtime/pprof"
 )
 
 const (
@@ -28,7 +30,18 @@ func main() {
 	if help {
 		usage()
 	}
-	done := make(chan bool)
+	if pprofile := os.Getenv("PPROF"); pprofile != "" {
+		f, err := os.Create(pprofile)
+		if err != nil {
+			log.Fatal("Can't create profiling stat file.", err)
+		}
+		log.Println("profiling stat file", f.Name())
+		pprof.StartCPUProfile(f)
+	}
+
+	done := make(chan os.Signal, 1)
+	signal.Notify(done, os.Interrupt)
+
 	if configFile != "" {
 		config, err := hydra.ReadConfig(configFile)
 		if err != nil {
@@ -42,7 +55,11 @@ func main() {
 	} else {
 		usage()
 	}
-	<-done
+
+	sig := <-done
+	log.Println("SIGNAL", sig, "exit")
+	pprof.StopCPUProfile()
+	os.Exit(0)
 }
 
 func usage() {
@@ -63,8 +80,8 @@ func newConfig(args []string, fieldName string) hydra.Config {
 	logs := make([]hydra.ConfigLogfile, 1)
 	logs[0] = hydra.ConfigLogfile{Tag: tag, File: file}
 	return hydra.Config{
-		Servers: servers,
-		Logs: logs,
+		Servers:   servers,
+		Logs:      logs,
 		FieldName: fieldName,
 	}
 }
