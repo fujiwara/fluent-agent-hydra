@@ -6,10 +6,11 @@ import (
 )
 
 type Config struct {
-	TagPrefix string
-	FieldName string
-	Servers   []string
-	Logs      []ConfigLogfile
+	TagPrefix      string
+	FieldName      string
+	Servers        []string
+	Logs           []ConfigLogfile
+	MonitorAddress string
 }
 
 type ConfigLogfile struct {

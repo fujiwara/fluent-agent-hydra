@@ -7,10 +7,10 @@ import (
 )
 
 // Forward ... recieve BulkMessages from channel, and send it to passed loggers until success.
-func Forward(ch chan *BulkMessage, messageKey string, loggers ...*fluent.Fluent) {
+func Forward(messageCh chan *BulkMessage, monitorCh chan *Stat, messageKey string, loggers ...*fluent.Fluent) {
 RECIEVE:
 	for {
-		bulk, ok := <-ch
+		bulk, ok := <-messageCh
 		if !ok {
 			log.Println("[info] shutdown forward process")
 			for _, logger := range loggers {
@@ -34,6 +34,11 @@ RECIEVE:
 				}
 				err := logger.Send(packed)
 				if err == nil {
+					monitorCh <- &Stat{
+						Tag:      tag,
+						Messages: int64(len(messages)),
+						Bytes:    int64(len(packed)),
+					}
 					continue RECIEVE // success
 				}
 				log.Println("[warning] Forwarding failed to", logger.Server, err)

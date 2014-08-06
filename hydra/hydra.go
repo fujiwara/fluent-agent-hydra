@@ -10,12 +10,15 @@ type BulkMessage struct {
 }
 
 const (
-	ChannelBufferLen = 1
+	MessageChannelBufferLen = 1
+	MonitorChannelBufferLen = 256
 )
 
 // NewChannel create channel for using by Forward() and Trail().
-func NewChannel() chan *BulkMessage {
-	return make(chan *BulkMessage, ChannelBufferLen)
+func NewChannel() (chan *BulkMessage, chan *Stat) {
+	messageCh := make(chan *BulkMessage, MessageChannelBufferLen)
+	monitorCh := make(chan *Stat, MonitorChannelBufferLen)
+	return messageCh, monitorCh
 }
 
 func NewBulkMessage(tag string, buf *[]byte) *BulkMessage {

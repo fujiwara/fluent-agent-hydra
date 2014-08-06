@@ -26,14 +26,16 @@ var (
 
 func main() {
 	var (
-		configFile string
-		help       bool
-		fieldName  string
+		configFile  string
+		help        bool
+		fieldName   string
+		monitorAddr string
 	)
 	flag.StringVar(&configFile, "c", "", "configuration file path")
 	flag.BoolVar(&help, "h", false, "show help message")
 	flag.BoolVar(&help, "help", false, "show help message")
 	flag.StringVar(&fieldName, "f", defaultMessageKey, "fieldname of fluentd log message attribute (DEFAULT: message)")
+	flag.StringVar(&monitorAddr, "monitor", "127.0.0.1:24223", "monitor HTTP server address")
 	flag.Parse()
 
 	if help {
@@ -58,7 +60,7 @@ func main() {
 		}
 		runWithConfig(config)
 	} else if args := flag.Args(); len(args) >= 3 {
-		config := newConfig(args, fieldName)
+		config := newConfig(args, fieldName, monitorAddr)
 		runWithConfig(config)
 	} else {
 		usage()
@@ -79,7 +81,7 @@ func usage() {
 	os.Exit(1)
 }
 
-func newConfig(args []string, fieldName string) hydra.Config {
+func newConfig(args []string, fieldName string, monitorAddr string) hydra.Config {
 	tag := args[0]
 	file := args[1]
 	servers := args[2:]
@@ -87,13 +89,21 @@ func newConfig(args []string, fieldName string) hydra.Config {
 	logs := make([]hydra.ConfigLogfile, 1)
 	logs[0] = hydra.ConfigLogfile{Tag: tag, File: file}
 	return hydra.Config{
-		Servers:   servers,
-		Logs:      logs,
-		FieldName: fieldName,
+		Servers:        servers,
+		Logs:           logs,
+		FieldName:      fieldName,
+		MonitorAddress: monitorAddr,
 	}
 }
 
 func runWithConfig(config hydra.Config) {
+	messageCh, monitorCh := hydra.NewChannel()
+
+	_, err := hydra.NewMonitorServer(monitorCh, config.MonitorAddress)
+	if err != nil {
+		log.Println("[error] Couldn't start monitor server.", err)
+	}
+
 	loggers := make([]*fluent.Fluent, len(config.Servers))
 	for i, server := range config.Servers {
 		logger, err := fluent.New(fluent.Config{Server: server})
@@ -105,7 +115,6 @@ func runWithConfig(config hydra.Config) {
 		loggers[i] = logger
 	}
 
-	ch := hydra.NewChannel()
 	for _, logfile := range config.Logs {
 		var tag string
 		if config.TagPrefix != "" {
@@ -113,7 +122,7 @@ func runWithConfig(config hydra.Config) {
 		} else {
 			tag = logfile.Tag
 		}
-		go hydra.Trail(logfile.File, tag, ch)
+		go hydra.Trail(logfile.File, tag, messageCh)
 	}
 
 	var fieldName string
@@ -123,5 +132,5 @@ func runWithConfig(config hydra.Config) {
 		fieldName = defaultMessageKey
 	}
 
-	go hydra.Forward(ch, fieldName, loggers...)
+	go hydra.Forward(messageCh, monitorCh, fieldName, loggers...)
 }

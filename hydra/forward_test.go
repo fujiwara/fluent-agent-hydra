@@ -32,19 +32,19 @@ func TestForwardSingle(t *testing.T) {
 		t.Errorf("can't create logger to %s", addr, err)
 	}
 
-	ch := hydra.NewChannel()
-	go hydra.Forward(ch, TestMessageKey, logger)
+	msgCh, monCh := hydra.NewChannel()
+	go hydra.Forward(msgCh, monCh, TestMessageKey, logger)
 
 	message := strings.Join(TestMessageLines, "\n")
 	messageBytes := []byte(message)
 	bulk := hydra.NewBulkMessage(TestTag, &messageBytes)
-	ch <- bulk
+	msgCh <- bulk
 	sleep(3)
 
 	if n := atomic.LoadInt64(&counter); n != int64(len(TestMessageLines)) {
 		t.Error("insufficient recieved messages. sent", len(TestMessageLines), "recieved", n)
 	}
-	close(ch)
+	close(msgCh)
 	close(mockCloser)
 	sleep(1)
 }
@@ -58,13 +58,13 @@ func TestForwardReconnect(t *testing.T) {
 	if err != nil {
 		t.Error("can't create logger to %s", addr, err)
 	}
-	ch := hydra.NewChannel()
-	go hydra.Forward(ch, TestMessageKey, logger)
+	msgCh, monCh := hydra.NewChannel()
+	go hydra.Forward(msgCh, monCh, TestMessageKey, logger)
 
 	message := strings.Join(TestMessageLines, "\n")
 	messageBytes := []byte(message)
 	bulk := hydra.NewBulkMessage(TestTag, &messageBytes)
-	ch <- bulk
+	msgCh <- bulk
 	sleep(1)
 
 	t.Log("notify shutdown mockServer")
@@ -75,9 +75,9 @@ func TestForwardReconnect(t *testing.T) {
 	t.Log("restarting mock server on same addr", addr)
 	_, mockCloser = runMockServer(t, addr, &counter)
 	sleep(1)
-	ch <- bulk // Afeter unexpected server closing, first Write() will be succeeded and lost...
+	msgCh <- bulk // Afeter unexpected server closing, first Write() will be succeeded and lost...
 	sleep(1)
-	ch <- bulk
+	msgCh <- bulk
 	t.Log("waiting for reconnect & resend completed 5 sec")
 	sleep(3)
 
@@ -85,7 +85,7 @@ func TestForwardReconnect(t *testing.T) {
 		t.Error("insufficient recieved messages. sent", len(TestMessageLines)*2, "recieved", n)
 	}
 	close(mockCloser)
-	close(ch)
+	close(msgCh)
 	sleep(1)
 }
 
@@ -108,20 +108,20 @@ func TestForwardFailOver(t *testing.T) {
 		t.Error("create logger failed", err)
 	}
 
-	ch := hydra.NewChannel()
-	go hydra.Forward(ch, TestMessageKey, primaryLogger, secondaryLogger)
+	msgCh, monCh := hydra.NewChannel()
+	go hydra.Forward(msgCh, monCh, TestMessageKey, primaryLogger, secondaryLogger)
 	sleep(1)
 
 	message := strings.Join(TestMessageLines, "\n")
 	messageBytes := []byte(message)
 	bulk := hydra.NewBulkMessage(TestTag, &messageBytes)
-	ch <- bulk
+	msgCh <- bulk
 	sleep(1)
 
 	if n := atomic.LoadInt64(&counter); n != int64(len(TestMessageLines)) {
 		t.Error("insufficient recieved messages. sent", len(TestMessageLines), "recieved", n)
 	}
-	close(ch)
+	close(msgCh)
 	close(secondaryCloser)
 	sleep(1)
 }

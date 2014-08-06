@@ -50,7 +50,7 @@ func TestTrail(t *testing.T) {
 
 	go fileWriter(t, file, Logs)
 
-	ch := hydra.NewChannel()
+	ch, _ := hydra.NewChannel()
 	go hydra.Trail(file.Name(), "test", ch)
 
 	resultCh := make(chan string)
