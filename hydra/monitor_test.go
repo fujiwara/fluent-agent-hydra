@@ -24,7 +24,7 @@ func TestMonitorServer(t *testing.T) {
 		for i := 1; i <= 100; i++ {
 			m := rand.Int63n(10)
 			b := rand.Int63n(2560)
-			ch <- &hydra.Stat{
+			ch <- &hydra.SentStat{
 				Tag:      tag,
 				Messages: m,
 				Bytes:    b,

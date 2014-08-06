@@ -15,9 +15,9 @@ const (
 )
 
 // NewChannel create channel for using by Forward() and Trail().
-func NewChannel() (chan *BulkMessage, chan *Stat) {
+func NewChannel() (chan *BulkMessage, chan Stat) {
 	messageCh := make(chan *BulkMessage, MessageChannelBufferLen)
-	monitorCh := make(chan *Stat, MonitorChannelBufferLen)
+	monitorCh := make(chan Stat, MonitorChannelBufferLen)
 	return messageCh, monitorCh
 }
 
