@@ -78,7 +78,7 @@ func New(config Config) (f *Fluent, err error) {
 	return
 }
 
-// NewPackedObject creates a MessagePack 'Message' object.
+// NewMessageObject creates a MessagePack 'Message' object.
 func NewMessageObject(tag string, key string, messages [][]byte) ([]byte, error) {
 	timeUnix := time.Now().Unix()
 	buffer := make([]byte, 0, len(messages)*1024)
