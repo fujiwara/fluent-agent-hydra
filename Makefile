@@ -8,5 +8,4 @@ test:
 
 get-deps:
 	go get -d -v ./fluent/ ./hydra/
-
-
+	go get github.com/mattn/go-scan
