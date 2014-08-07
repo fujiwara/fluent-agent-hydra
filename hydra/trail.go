@@ -22,7 +22,7 @@ func InTail(conf ConfigLogfile, ch chan *fluent.FluentRecordSet) {
 			log.Println("[error] Couldn't get current working dir.", err)
 			return
 		}
-		conf.File = filepath.Join(cwd, filename)
+		filename = filepath.Join(cwd, filename)
 	}
 
 	watcher, err := fsnotify.NewWatcher()
