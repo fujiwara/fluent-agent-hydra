@@ -6,11 +6,11 @@ import (
 	"time"
 )
 
-// Forward ... recieve BulkMessages from channel, and send it to passed loggers until success.
-func Forward(messageCh chan *BulkMessage, monitorCh chan Stat, messageKey string, loggers ...*fluent.Fluent) {
+// OutForward ... recieve FluentRecordSet from channel, and send it to passed loggers until success.
+func OutForward(messageCh chan *fluent.FluentRecordSet, monitorCh chan Stat, loggers ...*fluent.Fluent) {
 RECIEVE:
 	for {
-		bulk, ok := <-messageCh
+		recordSet, ok := <-messageCh
 		if !ok {
 			log.Println("[info] shutdown forward process")
 			for _, logger := range loggers {
@@ -18,10 +18,8 @@ RECIEVE:
 			}
 			return
 		}
-		tag := bulk.Tag
-		messages := bulk.Messages
 		first := true
-		packed, err := fluent.NewPackedForwardObject(tag, messageKey, messages)
+		packed, err := recordSet.PackAsPacketForward()
 		if err != nil {
 			log.Println("[error] Can't create msgpack object", err)
 			continue RECIEVE
@@ -35,8 +33,8 @@ RECIEVE:
 				err := logger.Send(packed)
 				if err == nil {
 					monitorCh <- &SentStat{
-						Tag:      tag,
-						Messages: int64(len(messages)),
+						Tag:      recordSet.Tag,
+						Messages: int64(len(recordSet.Records)),
 						Bytes:    int64(len(packed)),
 					}
 					continue RECIEVE // success
@@ -46,8 +44,8 @@ RECIEVE:
 			if first {
 				log.Printf(
 					"[warning] All servers are unavailable. pending %d messages tag:%s",
-					len(messages),
-					tag,
+					len(recordSet.Records),
+					recordSet.Tag,
 				)
 				first = false
 			}
@@ -55,3 +53,4 @@ RECIEVE:
 		}
 	}
 }
+

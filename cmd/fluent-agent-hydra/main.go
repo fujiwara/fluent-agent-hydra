@@ -6,14 +6,12 @@ import (
 	"github.com/fujiwara/fluent-agent-hydra/fluent"
 	"github.com/fujiwara/fluent-agent-hydra/hydra"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"runtime/pprof"
 	"syscall"
-)
-
-const (
-	defaultMessageKey = "message"
+	"strconv"
 )
 
 var (
@@ -34,7 +32,7 @@ func main() {
 	flag.StringVar(&configFile, "c", "", "configuration file path")
 	flag.BoolVar(&help, "h", false, "show help message")
 	flag.BoolVar(&help, "help", false, "show help message")
-	flag.StringVar(&fieldName, "f", defaultMessageKey, "fieldname of fluentd log message attribute (DEFAULT: message)")
+	flag.StringVar(&fieldName, "f", hydra.DefaultFieldName, "fieldname of fluentd log message attribute (DEFAULT: message)")
 	flag.StringVar(&monitorAddr, "monitor", "127.0.0.1:24223", "monitor HTTP server address")
 	flag.Parse()
 
@@ -61,7 +59,7 @@ func main() {
 		runWithConfig(config)
 	} else if args := flag.Args(); len(args) >= 3 {
 		config := newConfig(args, fieldName, monitorAddr)
-		runWithConfig(config)
+		runWithConfig(*config)
 	} else {
 		usage()
 	}
@@ -81,56 +79,67 @@ func usage() {
 	os.Exit(1)
 }
 
-func newConfig(args []string, fieldName string, monitorAddr string) hydra.Config {
+func newConfig(args []string, fieldName string, monitorAddr string) *hydra.Config {
 	tag := args[0]
 	file := args[1]
 	servers := args[2:]
 
-	logs := make([]hydra.ConfigLogfile, 1)
-	logs[0] = hydra.ConfigLogfile{Tag: tag, File: file}
-	return hydra.Config{
-		Servers:        servers,
-		Logs:           logs,
+	configLogfile := &hydra.ConfigLogfile{
+		Tag:       tag,
+		File:      file,
+		FieldName: fieldName,
+	}
+	configLogfiles := []*hydra.ConfigLogfile{configLogfile}
+
+	configServers := make([]*hydra.ConfigServer, len(servers))
+	for i, server := range servers {
+		var port int
+		host, _port, err := net.SplitHostPort(server)
+		if err != nil {
+			host = server
+			port = hydra.DefaultFluentdPort
+		} else {
+			port, _ = strconv.Atoi(_port)
+		}
+		configServers[i] = &hydra.ConfigServer{
+			Host: host,
+			Port: port,
+		}
+	}
+	config := &hydra.Config{
 		FieldName:      fieldName,
+		Servers:        configServers,
+		Logs:           configLogfiles,
 		MonitorAddress: monitorAddr,
 	}
+	config.Restrict()
+	return config
 }
 
 func runWithConfig(config hydra.Config) {
 	messageCh, monitorCh := hydra.NewChannel()
 
+	// start monitor server
 	_, err := hydra.NewMonitorServer(monitorCh, config.MonitorAddress)
 	if err != nil {
 		log.Println("[error] Couldn't start monitor server.", err)
 	}
 
+	// start out_forward
 	loggers := make([]*fluent.Fluent, len(config.Servers))
 	for i, server := range config.Servers {
-		logger, err := fluent.New(fluent.Config{Server: server})
+		logger, err := fluent.New(fluent.Config{Server: server.Address()})
 		if err != nil {
 			log.Println("[warning] Can't initialize fluentd server.", err)
 		} else {
-			log.Println("[info] server", server)
+			log.Println("[info] server", server.Address())
 		}
 		loggers[i] = logger
 	}
+	go hydra.OutForward(messageCh, monitorCh, loggers...)
 
-	for _, logfile := range config.Logs {
-		var tag string
-		if config.TagPrefix != "" {
-			tag = config.TagPrefix + "." + logfile.Tag
-		} else {
-			tag = logfile.Tag
-		}
-		go hydra.Trail(logfile.File, tag, messageCh)
+	// start in_tail
+	for _, configLogfile := range config.Logs {
+		go hydra.InTail(*configLogfile, messageCh)
 	}
-
-	var fieldName string
-	if config.FieldName != "" {
-		fieldName = config.FieldName
-	} else {
-		fieldName = defaultMessageKey
-	}
-
-	go hydra.Forward(messageCh, monitorCh, fieldName, loggers...)
 }

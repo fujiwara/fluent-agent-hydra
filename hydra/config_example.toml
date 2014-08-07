@@ -1,6 +1,11 @@
-Servers = [ "127.0.0.1:24224", "127.0.0.1:24225" ]
 TagPrefix = "foo"
-FieldName = "msg"
+
+[[Servers]]
+Host = "127.0.0.1"
+
+[[Servers]]
+Host = "127.0.0.1"
+Port = 24225
 
 [[Logs]]
 Tag  = "tag1"
@@ -9,3 +14,4 @@ File = "/tmp/foo.log"
 [[Logs]]
 Tag  = "tag2"
 File = "/tmp/bar.log"
+FieldName = "msg"

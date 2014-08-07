@@ -2,6 +2,7 @@ package hydra
 
 import (
 	"bytes"
+	"github.com/fujiwara/fluent-agent-hydra/fluent"
 	"io"
 	"log"
 	"os"
@@ -16,26 +17,27 @@ const (
 )
 
 var (
-	LineSeparator  = []byte{'\n'}
 	ReadBufferSize = 64 * 1024
 )
 
 type File struct {
 	*os.File
-	Path     string
-	Tag      string
-	Position int64
-	contBuf  []byte
-	lastStat os.FileInfo
+	Path      string
+	Tag       string
+	Position  int64
+	contBuf   []byte
+	lastStat  os.FileInfo
+	FieldName string
 }
 
-func newTrailFile(path string, tag string, startPos int64) *File {
+func newTrailFile(path string, tag string, fieldName string, startPos int64) *File {
 	seekTo := startPos
 	first := true
 	for {
 		f, err := openFile(path, seekTo)
 		if err == nil {
 			f.Tag = tag
+			f.FieldName = fieldName
 			log.Println("[info] Trailing file:", f.Path, "tag:", f.Tag)
 			return f
 		}
@@ -58,7 +60,7 @@ func openFile(path string, startPos int64) (*File, error) {
 		return nil, err
 	}
 
-	file := &File{f, path, "", startPos, make([]byte, 0), stat}
+	file := &File{f, path, "", startPos, make([]byte, 0), stat, ""}
 
 	if startPos == SEEK_TAIL {
 		// seek to end of file
@@ -88,7 +90,7 @@ func (f *File) restrict() error {
 	return nil
 }
 
-func (f *File) tailAndSend(ch chan *BulkMessage) error {
+func (f *File) tailAndSend(ch chan *fluent.FluentRecordSet) error {
 	for {
 		readBuf := make([]byte, ReadBufferSize)
 		sendBuf := make([]byte, 0, ReadBufferSize*2)
@@ -119,7 +121,7 @@ func (f *File) tailAndSend(ch chan *BulkMessage) error {
 			sendBuf = append(sendBuf, readBuf[0:blockLen]...)
 			f.contBuf = readBuf[blockLen+1 : n]
 		}
-		ch <- NewBulkMessage(f.Tag, &sendBuf)
+		ch <- NewFluentRecordSet(f.Tag, f.FieldName, &sendBuf)
 	}
 	return nil
 }

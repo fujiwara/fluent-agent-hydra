@@ -40,14 +40,68 @@ type FluentRecord struct {
 	Data      map[string]interface{}
 }
 
+func (r *FluentRecord) Pack() ([]byte, error) {
+	msg := []interface{}{r.Tag, r.Timestamp, r.Data}
+	if data, dumperr := toMsgpack(msg); dumperr != nil {
+		fmt.Println("Can't convert to msgpack:", msg, dumperr)
+		return nil, dumperr
+	} else {
+		return data, nil
+	}
+}
+
 type TinyFluentRecord struct {
 	Timestamp uint64
 	Data      map[string]interface{}
 }
 
+func (r *TinyFluentRecord) Pack() ([]byte, error) {
+	msg := []interface{}{r.Timestamp, r.Data}
+	if data, dumperr := toMsgpack(msg); dumperr != nil {
+		fmt.Println("Can't convert to msgpack:", msg, dumperr)
+		return nil, dumperr
+	} else {
+		return data, nil
+	}
+}
+
 type FluentRecordSet struct {
 	Tag     string
 	Records []TinyFluentRecord
+}
+
+func (rs *FluentRecordSet) PackAsPacketForward() ([]byte, error) {
+	buffer := make([]byte, 0, len(rs.Records)*1024)
+	for _, record := range rs.Records {
+		data, err := record.Pack()
+		if err != nil {
+			return nil, err
+		}
+		buffer = append(buffer, data...)
+	}
+	if data, dumperr := toMsgpack([]interface{}{rs.Tag, buffer}); dumperr != nil {
+		fmt.Println("Can't convert to msgpack")
+		return nil, dumperr
+	} else {
+		return data, nil
+	}
+}
+
+func (rs *FluentRecordSet) PackAsForward() ([]byte, error) {
+	records := make([]interface{}, len(rs.Records))
+	var err error
+	for i, record := range rs.Records {
+		records[i], err = record.Pack()
+		if err != nil {
+			return nil, err
+		}
+	}
+	if data, dumperr := toMsgpack([]interface{}{rs.Tag, records}); dumperr != nil {
+		fmt.Println("Can't convert to msgpack")
+		return nil, dumperr
+	} else {
+		return data, nil
+	}
 }
 
 func coerceInPlace(data map[string]interface{}) {

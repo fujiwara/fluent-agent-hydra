@@ -2,25 +2,38 @@ package hydra
 
 import (
 	"bytes"
+	"github.com/fujiwara/fluent-agent-hydra/fluent"
+	"time"
 )
-
-type BulkMessage struct {
-	Tag      string
-	Messages [][]byte
-}
 
 const (
 	MessageChannelBufferLen = 1
 	MonitorChannelBufferLen = 256
 )
 
-// NewChannel create channel for using by Forward() and Trail().
-func NewChannel() (chan *BulkMessage, chan Stat) {
-	messageCh := make(chan *BulkMessage, MessageChannelBufferLen)
+var (
+	LineSeparator = []byte{'\n'}
+)
+
+// NewChannel create channel for using by OutForward() and InTail().
+func NewChannel() (chan *fluent.FluentRecordSet, chan Stat) {
+	messageCh := make(chan *fluent.FluentRecordSet, MessageChannelBufferLen)
 	monitorCh := make(chan Stat, MonitorChannelBufferLen)
 	return messageCh, monitorCh
 }
 
-func NewBulkMessage(tag string, buf *[]byte) *BulkMessage {
-	return &BulkMessage{tag, bytes.Split(*buf, LineSeparator)}
+func NewFluentRecordSet(tag string, key string, buffer *[]byte) *fluent.FluentRecordSet {
+	timestamp := uint64(time.Now().Unix())
+	messages := bytes.Split(*buffer, LineSeparator)
+	records := make([]fluent.TinyFluentRecord, len(messages))
+	for i, message := range messages {
+		records[i] = fluent.TinyFluentRecord{
+			Timestamp: timestamp,
+			Data:      map[string]interface{}{key: message},
+		}
+	}
+	return &fluent.FluentRecordSet{
+		Tag:     tag,
+		Records: records,
+	}
 }

@@ -14,12 +14,18 @@ import (
 
 var (
 	TestTag          = "test"
-	TestMessageKey   = "message"
+	TestFieldName    = "message"
 	TestMessageLines = []string{"message1", "message2", "message3"}
 )
 
 func sleep(n int) {
 	time.Sleep(time.Duration(n) * time.Second)
+}
+
+func prepareRecordSet() (*fluent.FluentRecordSet) {
+	message := strings.Join(TestMessageLines, "\n")
+	messageBytes := []byte(message)
+	return hydra.NewFluentRecordSet(TestTag, TestFieldName, &messageBytes)
 }
 
 func TestForwardSingle(t *testing.T) {
@@ -33,12 +39,10 @@ func TestForwardSingle(t *testing.T) {
 	}
 
 	msgCh, monCh := hydra.NewChannel()
-	go hydra.Forward(msgCh, monCh, TestMessageKey, logger)
+	go hydra.OutForward(msgCh, monCh, logger)
 
-	message := strings.Join(TestMessageLines, "\n")
-	messageBytes := []byte(message)
-	bulk := hydra.NewBulkMessage(TestTag, &messageBytes)
-	msgCh <- bulk
+	recordSet := prepareRecordSet()
+	msgCh <- recordSet
 	sleep(3)
 
 	if n := atomic.LoadInt64(&counter); n != int64(len(TestMessageLines)) {
@@ -59,12 +63,10 @@ func TestForwardReconnect(t *testing.T) {
 		t.Error("can't create logger to %s", addr, err)
 	}
 	msgCh, monCh := hydra.NewChannel()
-	go hydra.Forward(msgCh, monCh, TestMessageKey, logger)
+	go hydra.OutForward(msgCh, monCh, logger)
 
-	message := strings.Join(TestMessageLines, "\n")
-	messageBytes := []byte(message)
-	bulk := hydra.NewBulkMessage(TestTag, &messageBytes)
-	msgCh <- bulk
+	recordSet := prepareRecordSet()
+	msgCh <- recordSet
 	sleep(1)
 
 	t.Log("notify shutdown mockServer")
@@ -75,9 +77,9 @@ func TestForwardReconnect(t *testing.T) {
 	t.Log("restarting mock server on same addr", addr)
 	_, mockCloser = runMockServer(t, addr, &counter)
 	sleep(1)
-	msgCh <- bulk // Afeter unexpected server closing, first Write() will be succeeded and lost...
+	msgCh <- recordSet // Afeter unexpected server closing, first Write() will be succeeded and lost...
 	sleep(1)
-	msgCh <- bulk
+	msgCh <- recordSet
 	t.Log("waiting for reconnect & resend completed 5 sec")
 	sleep(3)
 
@@ -109,13 +111,11 @@ func TestForwardFailOver(t *testing.T) {
 	}
 
 	msgCh, monCh := hydra.NewChannel()
-	go hydra.Forward(msgCh, monCh, TestMessageKey, primaryLogger, secondaryLogger)
+	go hydra.OutForward(msgCh, monCh, primaryLogger, secondaryLogger)
 	sleep(1)
 
-	message := strings.Join(TestMessageLines, "\n")
-	messageBytes := []byte(message)
-	bulk := hydra.NewBulkMessage(TestTag, &messageBytes)
-	msgCh <- bulk
+	recordSet := prepareRecordSet()
+	msgCh <- recordSet
 	sleep(1)
 
 	if n := atomic.LoadInt64(&counter); n != int64(len(TestMessageLines)) {

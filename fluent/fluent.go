@@ -78,63 +78,6 @@ func New(config Config) (f *Fluent, err error) {
 	return
 }
 
-// NewMessageObject creates a MessagePack 'Message' object.
-func NewMessageObject(tag string, key string, messages [][]byte) ([]byte, error) {
-	timeUnix := time.Now().Unix()
-	buffer := make([]byte, 0, len(messages)*1024)
-	for _, message := range messages {
-		msg := []interface{}{tag, timeUnix, map[string][]byte{key: message}}
-		if data, dumperr := toMsgpack(msg); dumperr != nil {
-			fmt.Println("Can't convert to msgpack:", msg, dumperr)
-			return nil, dumperr
-		} else {
-			buffer = append(buffer, data...)
-		}
-	}
-	return buffer, nil
-}
-
-// NewForwardObject creates a MessagePack 'Forward' object.
-// see lib/fluent/plugin/in_forward.rb in fluentd
-func NewForwardObject(tag string, key string, messages [][]byte) ([]byte, error) {
-	timeUnix := time.Now().Unix()
-	msgs := make([]interface{}, len(messages))
-	for i, message := range messages {
-		msg := []interface{}{timeUnix, map[string][]byte{key: message}}
-		msgs[i] = msg
-	}
-	packedMsg := []interface{}{tag, msgs}
-	if data, dumperr := toMsgpack(packedMsg); dumperr != nil {
-		fmt.Println("Can't convert to msgpack")
-		return nil, dumperr
-	} else {
-		return data, nil
-	}
-}
-
-// NewPackedForwardObject creates a MessagePack 'PackedForward' object.
-// see lib/fluent/plugin/in_forward.rb in fluentd
-func NewPackedForwardObject(tag string, key string, messages [][]byte) ([]byte, error) {
-	timeUnix := time.Now().Unix()
-	buffer := make([]byte, 0, len(messages)*1024)
-	for _, message := range messages {
-		msg := []interface{}{timeUnix, map[string][]byte{key: message}}
-		if data, dumperr := toMsgpack(msg); dumperr != nil {
-			fmt.Println("Can't convert to msgpack:", msg, dumperr)
-			return nil, dumperr
-		} else {
-			buffer = append(buffer, data...)
-		}
-	}
-	packedMsg := []interface{}{tag, buffer}
-	if data, dumperr := toMsgpack(packedMsg); dumperr != nil {
-		fmt.Println("Can't convert to msgpack")
-		return nil, dumperr
-	} else {
-		return data, nil
-	}
-}
-
 // Close closes the connection.
 func (f *Fluent) Close() (err error) {
 	if f.conn != nil {
@@ -227,3 +170,4 @@ func (f *Fluent) Send(buffer []byte) (err error) {
 	}
 	return
 }
+

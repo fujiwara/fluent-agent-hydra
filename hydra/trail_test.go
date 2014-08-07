@@ -3,6 +3,7 @@ package hydra_test
 import (
 	"fmt"
 	"github.com/fujiwara/fluent-agent-hydra/hydra"
+	"github.com/fujiwara/fluent-agent-hydra/fluent"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -50,8 +51,13 @@ func TestTrail(t *testing.T) {
 
 	go fileWriter(t, file, Logs)
 
+	configLogfile := hydra.ConfigLogfile{
+		Tag: "test",
+		File: file.Name(),
+		FieldName: "message",
+	}
 	ch, _ := hydra.NewChannel()
-	go hydra.Trail(file.Name(), "test", ch)
+	go hydra.InTail(configLogfile, ch)
 
 	resultCh := make(chan string)
 	go reciever(t, ch, "test", resultCh)
@@ -91,15 +97,15 @@ func fileWriter(t *testing.T, file *os.File, logs []string) {
 	file.Close()
 }
 
-func reciever(t *testing.T, ch chan *hydra.BulkMessage, tag string, resultCh chan string) {
+func reciever(t *testing.T, ch chan *fluent.FluentRecordSet, tag string, resultCh chan string) {
 	recieved := ""
 	for {
-		bulk := <-ch
-		if bulk.Tag != "test" {
-			t.Errorf("got %v\nwant %v", bulk.Tag, "test")
+		recordSet := <-ch
+		if recordSet.Tag != "test" {
+			t.Errorf("got %v\nwant %v", recordSet.Tag, "test")
 		}
-		for _, message := range bulk.Messages {
-			t.Log("message", string(message))
+		for _, record := range recordSet.Records {
+			message := record.Data["message"].([]byte)
 			recieved = recieved + string(message) + string(hydra.LineSeparator)
 			if strings.Index(string(message), EOFMarker) != -1 {
 				resultCh <- recieved

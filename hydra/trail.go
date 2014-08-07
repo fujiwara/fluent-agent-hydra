@@ -1,6 +1,7 @@
 package hydra
 
 import (
+	"github.com/fujiwara/fluent-agent-hydra/fluent"
 	"github.com/howeyc/fsnotify"
 	"io"
 	"log"
@@ -8,9 +9,12 @@ import (
 	"path/filepath"
 )
 
-// Trail follow the tail of file and post BulkMessage to channel.
-func Trail(filename string, tag string, ch chan *BulkMessage) {
-	defer log.Println("[error] Aborted to trail", filename)
+// InTail follow the tail of file and post BulkMessage to channel.
+func InTail(conf ConfigLogfile, ch chan *fluent.FluentRecordSet) {
+	filename := conf.File
+	tag := conf.Tag
+	fieldName := conf.FieldName
+	defer log.Println("[error] Aborted to trail")
 
 	if !filepath.IsAbs(filename) { // rel path to abs path
 		cwd, err := os.Getwd()
@@ -18,7 +22,7 @@ func Trail(filename string, tag string, ch chan *BulkMessage) {
 			log.Println("[error] Couldn't get current working dir.", err)
 			return
 		}
-		filename = filepath.Join(cwd, filename)
+		conf.File = filepath.Join(cwd, filename)
 	}
 
 	watcher, err := fsnotify.NewWatcher()
@@ -36,7 +40,7 @@ func Trail(filename string, tag string, ch chan *BulkMessage) {
 		return
 	}
 	log.Println("[info] Trying trail file", filename)
-	f := newTrailFile(filename, tag, SEEK_TAIL)
+	f := newTrailFile(filename, tag, fieldName, SEEK_TAIL)
 	defer f.Close()
 
 EVENT:
@@ -50,7 +54,7 @@ EVENT:
 				log.Println("[info]", ev)
 				f.tailAndSend(ch)
 				f.Close()
-				f = newTrailFile(filename, tag, SEEK_HEAD)
+				f = newTrailFile(filename, tag, fieldName, SEEK_HEAD)
 			} else {
 				f.restrict()
 			}
