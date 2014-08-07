@@ -51,16 +51,16 @@ func TestTrail(t *testing.T) {
 
 	go fileWriter(t, file, Logs)
 
-	configLogfile := hydra.ConfigLogfile{
+	configLogfile := &hydra.ConfigLogfile{
 		Tag: "test",
 		File: file.Name(),
 		FieldName: "message",
 	}
-	ch, _ := hydra.NewChannel()
-	go hydra.InTail(configLogfile, ch)
+	msgCh, monCh := hydra.NewChannel()
+	go hydra.InTail(configLogfile, msgCh, monCh)
 
 	resultCh := make(chan string)
-	go reciever(t, ch, "test", resultCh)
+	go reciever(t, msgCh, "test", resultCh)
 
 	recieved := <-resultCh
 	sent := strings.Join(Logs, "")

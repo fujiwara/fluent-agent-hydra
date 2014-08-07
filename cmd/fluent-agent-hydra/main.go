@@ -3,15 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/fujiwara/fluent-agent-hydra/fluent"
 	"github.com/fujiwara/fluent-agent-hydra/hydra"
 	"log"
-	"net"
 	"os"
 	"os/signal"
 	"runtime/pprof"
 	"syscall"
-	"strconv"
 )
 
 var (
@@ -58,13 +55,13 @@ func main() {
 		}
 		runWithConfig(config)
 	} else if args := flag.Args(); len(args) >= 3 {
-		config := newConfig(args, fieldName, monitorAddr)
-		runWithConfig(*config)
+		config := hydra.NewConfigByArgs(args, fieldName, monitorAddr)
+		runWithConfig(config)
 	} else {
 		usage()
 	}
 	sig := <-done
-	log.Println("[info] SIGNAL", sig, ", exit.")
+	log.Println("[info] SIGNAL", sig, "exit.")
 	pprof.StopCPUProfile()
 	os.Exit(0)
 }
@@ -79,67 +76,20 @@ func usage() {
 	os.Exit(1)
 }
 
-func newConfig(args []string, fieldName string, monitorAddr string) *hydra.Config {
-	tag := args[0]
-	file := args[1]
-	servers := args[2:]
-
-	configLogfile := &hydra.ConfigLogfile{
-		Tag:       tag,
-		File:      file,
-		FieldName: fieldName,
-	}
-	configLogfiles := []*hydra.ConfigLogfile{configLogfile}
-
-	configServers := make([]*hydra.ConfigServer, len(servers))
-	for i, server := range servers {
-		var port int
-		host, _port, err := net.SplitHostPort(server)
-		if err != nil {
-			host = server
-			port = hydra.DefaultFluentdPort
-		} else {
-			port, _ = strconv.Atoi(_port)
-		}
-		configServers[i] = &hydra.ConfigServer{
-			Host: host,
-			Port: port,
-		}
-	}
-	config := &hydra.Config{
-		FieldName:      fieldName,
-		Servers:        configServers,
-		Logs:           configLogfiles,
-		MonitorAddress: monitorAddr,
-	}
-	config.Restrict()
-	return config
-}
-
-func runWithConfig(config hydra.Config) {
+func runWithConfig(config *hydra.Config) {
 	messageCh, monitorCh := hydra.NewChannel()
 
 	// start monitor server
-	_, err := hydra.NewMonitorServer(monitorCh, config.MonitorAddress)
+	_, err := hydra.MonitorServer(config, monitorCh)
 	if err != nil {
 		log.Println("[error] Couldn't start monitor server.", err)
 	}
 
 	// start out_forward
-	loggers := make([]*fluent.Fluent, len(config.Servers))
-	for i, server := range config.Servers {
-		logger, err := fluent.New(fluent.Config{Server: server.Address()})
-		if err != nil {
-			log.Println("[warning] Can't initialize fluentd server.", err)
-		} else {
-			log.Println("[info] server", server.Address())
-		}
-		loggers[i] = logger
-	}
-	go hydra.OutForward(messageCh, monitorCh, loggers...)
+	go hydra.OutForward(config.Servers, messageCh, monitorCh)
 
 	// start in_tail
 	for _, configLogfile := range config.Logs {
-		go hydra.InTail(*configLogfile, messageCh)
+		go hydra.InTail(configLogfile, messageCh, monitorCh)
 	}
 }

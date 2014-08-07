@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -28,18 +29,23 @@ func prepareRecordSet() (*fluent.FluentRecordSet) {
 	return hydra.NewFluentRecordSet(TestTag, TestFieldName, &messageBytes)
 }
 
+func newConfigServer(addr string) *hydra.ConfigServer {
+	host, _port, _ := net.SplitHostPort(addr)
+	port, _ := strconv.Atoi(_port)
+	return &hydra.ConfigServer{
+		Host: host,
+		Port: port,
+	}
+}
+
 func TestForwardSingle(t *testing.T) {
 	log.Println("---- TestForwardSingle ----")
 	counter := int64(0)
 
 	addr, mockCloser := runMockServer(t, "", &counter)
-	logger, err := fluent.New(fluent.Config{Server: addr})
-	if err != nil {
-		t.Errorf("can't create logger to %s", addr, err)
-	}
-
+	configServer := newConfigServer(addr)
 	msgCh, monCh := hydra.NewChannel()
-	go hydra.OutForward(msgCh, monCh, logger)
+	go hydra.OutForward([]*hydra.ConfigServer{configServer}, msgCh, monCh)
 
 	recordSet := prepareRecordSet()
 	msgCh <- recordSet
@@ -58,12 +64,9 @@ func TestForwardReconnect(t *testing.T) {
 	counter := int64(0)
 
 	addr, mockCloser := runMockServer(t, "", &counter)
-	logger, err := fluent.New(fluent.Config{Server: addr})
-	if err != nil {
-		t.Error("can't create logger to %s", addr, err)
-	}
+	configServer := newConfigServer(addr)
 	msgCh, monCh := hydra.NewChannel()
-	go hydra.OutForward(msgCh, monCh, logger)
+	go hydra.OutForward([]*hydra.ConfigServer{configServer}, msgCh, monCh)
 
 	recordSet := prepareRecordSet()
 	msgCh <- recordSet
@@ -98,20 +101,15 @@ func TestForwardFailOver(t *testing.T) {
 	primaryAddr, primaryCloser := runMockServer(t, "", &counter)
 	close(primaryCloser) // shutdown primary server immediately
 	sleep(1)
-
-	primaryLogger, err := fluent.New(fluent.Config{Server: primaryAddr})
-	if err == nil {
-		t.Error("create logger must return err (server is down)")
-	}
-
+	primaryConfigServer := newConfigServer(primaryAddr)
 	secondaryAddr, secondaryCloser := runMockServer(t, "", &counter)
-	secondaryLogger, err := fluent.New(fluent.Config{Server: secondaryAddr})
-	if err != nil {
-		t.Error("create logger failed", err)
+	secondaryConfigServer := newConfigServer(secondaryAddr)
+	configServers := []*hydra.ConfigServer{
+		primaryConfigServer,
+		secondaryConfigServer,
 	}
-
 	msgCh, monCh := hydra.NewChannel()
-	go hydra.OutForward(msgCh, monCh, primaryLogger, secondaryLogger)
+	go hydra.OutForward(configServers, msgCh, monCh)
 	sleep(1)
 
 	recordSet := prepareRecordSet()

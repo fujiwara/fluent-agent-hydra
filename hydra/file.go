@@ -2,6 +2,7 @@ package hydra
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/fujiwara/fluent-agent-hydra/fluent"
 	"io"
 	"log"
@@ -30,7 +31,7 @@ type File struct {
 	FieldName string
 }
 
-func newTrailFile(path string, tag string, fieldName string, startPos int64) *File {
+func newTrailFile(path string, tag string, fieldName string, startPos int64, monitorCh chan Stat) *File {
 	seekTo := startPos
 	first := true
 	for {
@@ -39,7 +40,19 @@ func newTrailFile(path string, tag string, fieldName string, startPos int64) *Fi
 			f.Tag = tag
 			f.FieldName = fieldName
 			log.Println("[info] Trailing file:", f.Path, "tag:", f.Tag)
+			monitorCh <- &FileStat{
+				Tag:      tag,
+				File:     path,
+				Position: f.Position,
+				Error:    "",
+			}
 			return f
+		}
+		monitorCh <- &FileStat{
+			Tag:      tag,
+			File:     path,
+			Position: int64(-1),
+			Error:    fmt.Sprintf("[%s] %s", time.Now(), err),
 		}
 		if first {
 			log.Println("[warning]", err, "Retrying...")
@@ -90,7 +103,7 @@ func (f *File) restrict() error {
 	return nil
 }
 
-func (f *File) tailAndSend(ch chan *fluent.FluentRecordSet) error {
+func (f *File) tailAndSend(messageCh chan *fluent.FluentRecordSet, monitorCh chan Stat) error {
 	for {
 		readBuf := make([]byte, ReadBufferSize)
 		sendBuf := make([]byte, 0, ReadBufferSize*2)
@@ -121,7 +134,12 @@ func (f *File) tailAndSend(ch chan *fluent.FluentRecordSet) error {
 			sendBuf = append(sendBuf, readBuf[0:blockLen]...)
 			f.contBuf = readBuf[blockLen+1 : n]
 		}
-		ch <- NewFluentRecordSet(f.Tag, f.FieldName, &sendBuf)
+		messageCh <- NewFluentRecordSet(f.Tag, f.FieldName, &sendBuf)
+		monitorCh <- &FileStat{
+			File:     f.Path,
+			Position: f.Position,
+			Tag:      f.Tag,
+		}
 	}
 	return nil
 }

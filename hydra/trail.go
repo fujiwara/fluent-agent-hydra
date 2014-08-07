@@ -10,7 +10,7 @@ import (
 )
 
 // InTail follow the tail of file and post BulkMessage to channel.
-func InTail(conf ConfigLogfile, ch chan *fluent.FluentRecordSet) {
+func InTail(conf *ConfigLogfile, messageCh chan *fluent.FluentRecordSet, monitorCh chan Stat) {
 	filename := conf.File
 	tag := conf.Tag
 	fieldName := conf.FieldName
@@ -40,7 +40,7 @@ func InTail(conf ConfigLogfile, ch chan *fluent.FluentRecordSet) {
 		return
 	}
 	log.Println("[info] Trying trail file", filename)
-	f := newTrailFile(filename, tag, fieldName, SEEK_TAIL)
+	f := newTrailFile(filename, tag, fieldName, SEEK_TAIL, monitorCh)
 	defer f.Close()
 
 EVENT:
@@ -52,13 +52,13 @@ EVENT:
 			}
 			if ev.IsDelete() || ev.IsRename() {
 				log.Println("[info]", ev)
-				f.tailAndSend(ch)
+				f.tailAndSend(messageCh, monitorCh)
 				f.Close()
-				f = newTrailFile(filename, tag, fieldName, SEEK_HEAD)
+				f = newTrailFile(filename, tag, fieldName, SEEK_HEAD, monitorCh)
 			} else {
 				f.restrict()
 			}
-			err = f.tailAndSend(ch)
+			err = f.tailAndSend(messageCh, monitorCh)
 			if err != io.EOF {
 				log.Println(err)
 			}

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/BurntSushi/toml"
 	"log"
+	"net"
+	"strconv"
 )
 
 const (
@@ -30,14 +32,51 @@ type ConfigLogfile struct {
 	FieldName string
 }
 
-func ReadConfig(filename string) (Config, error) {
+func ReadConfig(filename string) (*Config, error) {
 	var config Config
 	log.Println("[info] Loading config file:", filename)
 	if _, err := toml.DecodeFile(filename, &config); err != nil {
-		return config, err
+		return nil, err
 	}
 	config.Restrict()
-	return config, nil
+	return &config, nil
+}
+
+func NewConfigByArgs(args []string, fieldName string, monitorAddr string) *Config {
+	tag := args[0]
+	file := args[1]
+	servers := args[2:]
+
+	configLogfile := &ConfigLogfile{
+		Tag:       tag,
+		File:      file,
+		FieldName: fieldName,
+	}
+	configLogfiles := []*ConfigLogfile{configLogfile}
+
+	configServers := make([]*ConfigServer, len(servers))
+	for i, server := range servers {
+		var port int
+		host, _port, err := net.SplitHostPort(server)
+		if err != nil {
+			host = server
+			port = DefaultFluentdPort
+		} else {
+			port, _ = strconv.Atoi(_port)
+		}
+		configServers[i] = &ConfigServer{
+			Host: host,
+			Port: port,
+		}
+	}
+	config := &Config{
+		FieldName:      fieldName,
+		Servers:        configServers,
+		Logs:           configLogfiles,
+		MonitorAddress: monitorAddr,
+	}
+	config.Restrict()
+	return config
 }
 
 func (cs *ConfigServer) Restrict(c *Config) {
