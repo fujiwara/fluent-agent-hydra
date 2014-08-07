@@ -1,5 +1,9 @@
 TagPrefix = "foo"    # comment
 
+[[Receivers]]
+Host = "localhost"
+Port = 24224
+
 [[Servers]]
 Host = "127.0.0.1"
 

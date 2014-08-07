@@ -7,7 +7,7 @@ import (
 )
 
 func TestReadConfig(t *testing.T) {
-	config, err := hydra.ReadConfig("./config_example.toml")
+	config, err := hydra.ReadConfig("./config_test.toml")
 	if err != nil {
 		t.Error("read config failed", err)
 	}
@@ -36,4 +36,13 @@ func TestReadConfig(t *testing.T) {
 	if config.Logs[1].Tag != "foo.tag2" || config.Logs[1].File != "/tmp/bar.log" || config.Logs[1].FieldName != "msg" {
 		t.Errorf("invalid Logs[1] got %#v", config.Logs[1])
 	}
+
+
+	if len(config.Receivers) != 1 {
+		t.Errorf("invalid Receivers got %#v", config.Receivers)
+	}
+	if config.Receivers[0].Host != "localhost" || config.Receivers[0].Port != 24224 {
+		t.Errorf("invalid Receivers[0] got %#v", config.Receivers[0])
+	}
+
 }

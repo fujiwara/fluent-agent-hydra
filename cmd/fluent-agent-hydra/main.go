@@ -92,4 +92,9 @@ func runWithConfig(config *hydra.Config) {
 	for _, configLogfile := range config.Logs {
 		go hydra.InTail(configLogfile, messageCh, monitorCh)
 	}
+
+	// start in_forward
+	for _, configReceiver := range config.Receivers {
+		hydra.InForward(configReceiver, messageCh, monitorCh)
+	}
 }

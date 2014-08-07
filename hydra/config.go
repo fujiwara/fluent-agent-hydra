@@ -18,6 +18,7 @@ type Config struct {
 	FieldName      string
 	Servers        []*ConfigServer
 	Logs           []*ConfigLogfile
+	Receivers      []*ConfigReceiver
 	MonitorAddress string
 }
 
@@ -30,6 +31,11 @@ type ConfigLogfile struct {
 	Tag       string
 	File      string
 	FieldName string
+}
+
+type ConfigReceiver struct {
+	Host string
+	Port int
 }
 
 func ReadConfig(filename string) (*Config, error) {
@@ -85,6 +91,12 @@ func (cs *ConfigServer) Restrict(c *Config) {
 	}
 }
 
+func (cr *ConfigReceiver) Restrict(c *Config) {
+	if cr.Port == 0 {
+		cr.Port = DefaultFluentdPort
+	}
+}
+
 func (cs *ConfigServer) Address() string {
 	return fmt.Sprintf("%s:%d", cs.Host, cs.Port)
 }
@@ -102,10 +114,13 @@ func (c *Config) Restrict() {
 	if c.FieldName == "" {
 		c.FieldName = DefaultFieldName
 	}
-	for _, configServer := range c.Servers {
-		configServer.Restrict(c)
+	for _, subconf := range c.Servers {
+		subconf.Restrict(c)
 	}
-	for _, configLogfile := range c.Logs {
-		configLogfile.Restrict(c)
+	for _, subconf := range c.Logs {
+		subconf.Restrict(c)
+	}
+	for _, subconf := range c.Receivers {
+		subconf.Restrict(c)
 	}
 }
