@@ -40,7 +40,7 @@ func outForwardRecieve(messageCh chan *fluent.FluentRecordSet, monitorCh chan St
 		return &ShutdownType{"[info] Shutdown forward process"}
 	}
 	first := true
-	packed, err := recordSet.PackAsPacketForward()
+	packed, err := recordSet.PackAsPackedForward()
 	if err != nil {
 		log.Println("[error] Can't create msgpack object", err)
 		return err

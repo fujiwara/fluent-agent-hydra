@@ -70,7 +70,7 @@ type FluentRecordSet struct {
 	Records []TinyFluentRecord
 }
 
-func (rs *FluentRecordSet) PackAsPacketForward() ([]byte, error) {
+func (rs *FluentRecordSet) PackAsPackedForward() ([]byte, error) {
 	buffer := make([]byte, 0, len(rs.Records)*1024)
 	for _, record := range rs.Records {
 		data, err := record.Pack()

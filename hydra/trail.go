@@ -41,7 +41,6 @@ func InTail(conf *ConfigLogfile, messageCh chan *fluent.FluentRecordSet, monitor
 	}
 	log.Println("[info] Trying trail file", filename)
 	f := newTrailFile(filename, tag, fieldName, SEEK_TAIL, monitorCh)
-	defer f.Close()
 
 EVENT:
 	for {
@@ -63,7 +62,7 @@ EVENT:
 				log.Println(err)
 			}
 		case err := <-watcher.Error:
-			log.Println("error:", err)
+			log.Println("[error]", err)
 			watcher.RemoveWatch(parent)
 			watcher.Watch(parent)
 		}
