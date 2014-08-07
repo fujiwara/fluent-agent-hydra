@@ -18,7 +18,7 @@ func TestMonitorServer(t *testing.T) {
 		MonitorAddress: ":0",
 	}
 	_, ch := hydra.NewChannel()
-	addr, err := hydra.MonitorServer(config, ch)
+	addr, err := hydra.MonitorProcess(config, ch)
 
 	expectedMessages := make(map[string]int64)
 	expectedBytes := make(map[string]int64)

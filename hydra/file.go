@@ -2,7 +2,6 @@ package hydra
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/fujiwara/fluent-agent-hydra/fluent"
 	"io"
 	"log"
@@ -44,7 +43,6 @@ func newTrailFile(path string, tag string, fieldName string, startPos int64, mon
 				Tag:      tag,
 				File:     path,
 				Position: f.Position,
-				Error:    "",
 			}
 			return f
 		}
@@ -52,7 +50,7 @@ func newTrailFile(path string, tag string, fieldName string, startPos int64, mon
 			Tag:      tag,
 			File:     path,
 			Position: int64(-1),
-			Error:    fmt.Sprintf("[%s] %s", time.Now(), err),
+			Error:    monitorError(err),
 		}
 		if first {
 			log.Println("[warning]", err, "Retrying...")

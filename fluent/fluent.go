@@ -53,6 +53,8 @@ type Fluent struct {
 	reconnecting    bool
 	cancelReconnect chan bool
 	mu              sync.Mutex
+	lastError       error
+	lastErrorAt     time.Time
 }
 
 // New creates a new Logger.
@@ -117,10 +119,20 @@ func (f *Fluent) IsReconnecting() bool {
 	return f.reconnecting
 }
 
+func (f *Fluent) Alive() bool {
+	return f.conn != nil
+}
+
 // connect establishes a new connection using the specified transport.
 func (f *Fluent) connect() (err error) {
 	f.conn, err = net.DialTimeout("tcp", f.Server, f.Config.Timeout)
+	f.recordError(err)
 	return
+}
+
+func (f *Fluent) recordError(err error) {
+	f.lastErrorAt = time.Now()
+	f.lastError = err
 }
 
 func (f *Fluent) reconnect() {
@@ -130,6 +142,7 @@ func (f *Fluent) reconnect() {
 		if err == nil {
 			f.mu.Lock()
 			f.reconnecting = false
+			f.recordError(err)
 			f.mu.Unlock()
 			log.Println("[info] Successfully reconnected to", f.Server)
 			return
@@ -161,12 +174,22 @@ func (f *Fluent) Send(buffer []byte) (err error) {
 			go f.reconnect()
 		}
 		err = errors.New("Can't send messages, client is reconnecting")
+		f.recordError(err)
 		return
 	} else {
 		_, err = f.conn.Write(buffer)
 		if err != nil {
+			f.recordError(err)
 			f.Close()
 		}
 	}
 	return
+}
+
+func (f *Fluent) LastErrorString() string {
+	if f.lastError != nil {
+		return fmt.Sprintf("[%s] %s", f.lastErrorAt, f.lastError)
+	} else {
+		return ""
+	}
 }

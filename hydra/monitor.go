@@ -6,6 +6,8 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"time"
+	"fmt"
 )
 
 type Stats struct {
@@ -42,12 +44,7 @@ type FileStat struct {
 func (s *FileStat) ApplyTo(ss *Stats) {
 	ss.mu.Lock()
 	defer ss.mu.Unlock()
-	if _f, ok := ss.Files[s.File]; ok {
-		_f.Position = s.Position
-		_f.Error = s.Error
-	} else {
-		ss.Files[s.File] = s
-	}
+	ss.Files[s.File] = s
 }
 
 func (s *ServerStat) ApplyTo(ss *Stats) {
@@ -81,7 +78,7 @@ func (ss *Stats) RecieveStat(ch chan Stat) {
 	}
 }
 
-func MonitorServer(config *Config, monitorCh chan Stat) (net.Addr, error) {
+func MonitorProcess(config *Config, monitorCh chan Stat) (net.Addr, error) {
 	ss := &Stats{
 		Sent:    make(map[string]*SentStat),
 		Files:   make(map[string]*FileStat),
@@ -103,4 +100,8 @@ func MonitorServer(config *Config, monitorCh chan Stat) (net.Addr, error) {
 	go http.Serve(listener, nil)
 	log.Printf("[info] Monitor server listening http://%s/\n", listener.Addr())
 	return listener.Addr(), err
+}
+
+func monitorError(err error) string {
+	return fmt.Sprintf("[%s] %s", time.Now(), err)
 }

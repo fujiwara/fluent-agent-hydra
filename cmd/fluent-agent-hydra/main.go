@@ -80,7 +80,7 @@ func runWithConfig(config *hydra.Config) {
 	messageCh, monitorCh := hydra.NewChannel()
 
 	// start monitor server
-	_, err := hydra.MonitorServer(config, monitorCh)
+	_, err := hydra.MonitorProcess(config, monitorCh)
 	if err != nil {
 		log.Println("[error] Couldn't start monitor server.", err)
 	}
