@@ -23,7 +23,7 @@ func sleep(n int) {
 	time.Sleep(time.Duration(n) * time.Second)
 }
 
-func prepareRecordSet() (*fluent.FluentRecordSet) {
+func prepareRecordSet() *fluent.FluentRecordSet {
 	message := strings.Join(TestMessageLines, "\n")
 	messageBytes := []byte(message)
 	return hydra.NewFluentRecordSet(TestTag, TestFieldName, &messageBytes)

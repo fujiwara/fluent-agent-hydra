@@ -15,7 +15,7 @@ var (
 	LineSeparator = []byte{'\n'}
 )
 
-type ShutdownType struct{
+type ShutdownType struct {
 	message string
 }
 

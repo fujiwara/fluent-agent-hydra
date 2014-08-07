@@ -2,8 +2,8 @@ package hydra_test
 
 import (
 	"fmt"
-	"github.com/fujiwara/fluent-agent-hydra/hydra"
 	"github.com/fujiwara/fluent-agent-hydra/fluent"
+	"github.com/fujiwara/fluent-agent-hydra/hydra"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -52,8 +52,8 @@ func TestTrail(t *testing.T) {
 	go fileWriter(t, file, Logs)
 
 	configLogfile := &hydra.ConfigLogfile{
-		Tag: "test",
-		File: file.Name(),
+		Tag:       "test",
+		File:      file.Name(),
 		FieldName: "message",
 	}
 	msgCh, monCh := hydra.NewChannel()

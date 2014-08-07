@@ -9,10 +9,10 @@ import (
 )
 
 type Stats struct {
-	Sent       map[string]*SentStat `json:"sent"`
-	Files      map[string]*FileStat `json:"files"`
-	Servers   []*ServerStat        `json:"servers"`
-	mu         sync.Mutex
+	Sent    map[string]*SentStat `json:"sent"`
+	Files   map[string]*FileStat `json:"files"`
+	Servers []*ServerStat        `json:"servers"`
+	mu      sync.Mutex
 }
 
 type Stat interface {
@@ -20,10 +20,10 @@ type Stat interface {
 }
 
 type ServerStat struct {
-	Index   int       `json:"-"`
-	Address string    `json:"address"`
-	Alive   bool      `json:"alive"`
-	Error   string    `json:"error"`
+	Index   int    `json:"-"`
+	Address string `json:"address"`
+	Alive   bool   `json:"alive"`
+	Error   string `json:"error"`
 }
 
 type SentStat struct {
@@ -82,16 +82,20 @@ func (ss *Stats) RecieveStat(ch chan Stat) {
 }
 
 func MonitorServer(config *Config, monitorCh chan Stat) (net.Addr, error) {
+	ss := &Stats{
+		Sent:    make(map[string]*SentStat),
+		Files:   make(map[string]*FileStat),
+		Servers: make([]*ServerStat, len(config.Servers)),
+	}
+	go ss.RecieveStat(monitorCh)
+
+	if config.MonitorAddress == "" {
+		return nil, nil
+	}
 	listener, err := net.Listen("tcp", config.MonitorAddress)
 	if err != nil {
 		return nil, err
 	}
-	ss := &Stats{
-		Sent:  make(map[string]*SentStat),
-		Files: make(map[string]*FileStat),
-		Servers: make([]*ServerStat, len(config.Servers)),
-	}
-	go ss.RecieveStat(monitorCh)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		ss.WriteJSON(w)

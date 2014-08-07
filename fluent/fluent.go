@@ -170,4 +170,3 @@ func (f *Fluent) Send(buffer []byte) (err error) {
 	}
 	return
 }
-
