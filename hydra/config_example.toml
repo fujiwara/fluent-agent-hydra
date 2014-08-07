@@ -1,4 +1,4 @@
-TagPrefix = "foo"
+TagPrefix = "foo"    # comment
 
 [[Servers]]
 Host = "127.0.0.1"

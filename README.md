@@ -23,9 +23,15 @@ fluent-agent-hydra -c /path/to/config.toml
 A example of config.toml
 
 ```toml
-Servers = [ "127.0.0.1:24224", "127.0.0.1:24225" ]
-TagPrefix = "foo"
-FieldName = "msg"
+TagPrefix = "foo"     # "foo.tag1", "foo.tag2"
+FieldName = "message" # default
+
+[[Servers]]
+Host = "127.0.0.1"
+
+[[Servers]]
+Host = "127.0.0.1"
+Port = 24225
 
 [[Logs]]
 Tag  = "tag1"
@@ -34,6 +40,7 @@ File = "/path/to/foo.log"
 [[Logs]]
 Tag  = "tag2"
 File = "/path/to/bar.log"
+FieldName = "msg"
 ```
 
 ### Using command line arguments
