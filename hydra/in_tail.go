@@ -98,8 +98,8 @@ func (t *InTail) watchFileEvent(f *File) error {
 			return nil
 		}
 	case err := <-t.watcher.Error:
-		log.Println("[error]", err)
-		return err
+		log.Println("[warning]", err)
+		return nil
 	case <-time.After(TailInterval):
 	}
 
