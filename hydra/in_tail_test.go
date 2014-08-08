@@ -5,6 +5,7 @@ import (
 	"github.com/fujiwara/fluent-agent-hydra/fluent"
 	"github.com/fujiwara/fluent-agent-hydra/hydra"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"os"
 	"strings"
@@ -57,7 +58,11 @@ func TestTrail(t *testing.T) {
 		FieldName: "message",
 	}
 	msgCh, monCh := hydra.NewChannel()
-	go hydra.InTail(configLogfile, msgCh, monCh)
+	inTail, err := hydra.NewInTail(configLogfile, msgCh, monCh)
+	if err != nil {
+		t.Error(err)
+	}
+	go inTail.Run()
 
 	resultCh := make(chan string)
 	go reciever(t, msgCh, "test", resultCh)
@@ -77,20 +82,21 @@ func fileWriter(t *testing.T, file *os.File, logs []string) {
 
 	for _, line := range logs {
 		if strings.Index(line, RotateMarker) != -1 {
-			t.Log("fileWriter: rename file => file.old")
+			log.Println("fileWriter: rename file => file.old")
 			os.Rename(filename, filename+".old")
 			file.Close()
 			file, _ = os.OpenFile(filename, os.O_CREATE|os.O_WRONLY, 0644)
-			t.Log("fileWriter: re-opened file")
+			log.Println("fileWriter: re-opened file")
 		} else if strings.Index(line, TruncateMarker) != -1 {
 			time.Sleep(1 * time.Second)
-			t.Log("fileWriter: truncate(file, 0)")
+			log.Println("fileWriter: truncate(file, 0)")
 			os.Truncate(filename, 0)
 			file.Seek(int64(0), os.SEEK_SET)
 		}
 		_, err := file.WriteString(line)
+		log.Print("fileWriter: wrote ", line)
 		if err != nil {
-			t.Log("write failed", err)
+			log.Println("write failed", err)
 		}
 		randSleep()
 	}

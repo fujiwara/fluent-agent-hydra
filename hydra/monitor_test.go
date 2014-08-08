@@ -18,7 +18,8 @@ func TestMonitorServer(t *testing.T) {
 		MonitorAddress: ":0",
 	}
 	_, ch := hydra.NewChannel()
-	addr, err := hydra.MonitorProcess(config, ch)
+	monitor, _ := hydra.NewMonitor(config, ch)
+	go monitor.Run()
 
 	expectedMessages := make(map[string]int64)
 	expectedBytes := make(map[string]int64)
@@ -38,7 +39,7 @@ func TestMonitorServer(t *testing.T) {
 	}
 	sleep(1)
 
-	resp, err := http.Get(fmt.Sprintf("http://%s/", addr))
+	resp, err := http.Get(fmt.Sprintf("http://%s/", monitor.Addr))
 	if err != nil {
 		t.Error(err)
 	}

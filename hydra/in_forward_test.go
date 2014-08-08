@@ -16,11 +16,13 @@ func TestInForward(t *testing.T) {
 		Port: 0,
 	}
 	messageCh, monitorCh := hydra.NewChannel()
-	addr, err := hydra.InForward(config, messageCh, monitorCh)
+	inForward, err := hydra.NewInForward(config, messageCh, monitorCh)
 	if err != nil {
 		t.Error(err)
 	}
-	host, _port, _ := net.SplitHostPort(addr.String())
+	go inForward.Run()
+
+	host, _port, _ := net.SplitHostPort(inForward.Addr.String())
 	port, _ := strconv.Atoi(_port)
 	logger, err := client.New(client.Config{
 		FluentHost: host,

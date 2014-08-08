@@ -8,7 +8,14 @@ import (
 	"net"
 )
 
-func InForward(config *ConfigReceiver, messageCh chan *fluent.FluentRecordSet, monitorCh chan Stat) (net.Addr, error) {
+type InForward struct {
+	listener  net.Listener
+	Addr      net.Addr
+	messageCh chan *fluent.FluentRecordSet
+	monitorCh chan Stat
+}
+
+func NewInForward(config *ConfigReceiver, messageCh chan *fluent.FluentRecordSet, monitorCh chan Stat) (*InForward, error) {
 	addr := fmt.Sprintf("%s:%d", config.Host, config.Port)
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -16,19 +23,25 @@ func InForward(config *ConfigReceiver, messageCh chan *fluent.FluentRecordSet, m
 		return nil, err
 	}
 	log.Println("[info] Server listing", l.Addr())
-	go func() {
-		for {
-			conn, err := l.Accept()
-			if err != nil {
-				log.Println("[error] accept error", err)
-			}
-			go inForwardHandleConn(conn, messageCh, monitorCh)
-		}
-	}()
-	return l.Addr(), nil
+	return &InForward{
+		listener:  l,
+		Addr:      l.Addr(),
+		messageCh: messageCh,
+		monitorCh: monitorCh,
+	}, nil
 }
 
-func inForwardHandleConn(conn net.Conn, messageCh chan *fluent.FluentRecordSet, monitorCh chan Stat) {
+func (f *InForward) Run() {
+	for {
+		conn, err := f.listener.Accept()
+		if err != nil {
+			log.Println("[error] accept error", err)
+		}
+		go f.inForwardHandleConn(conn)
+	}
+}
+
+func (f *InForward) inForwardHandleConn(conn net.Conn) {
 	for {
 		recordSets, err := fluent.DecodeEntries(conn)
 		if err == io.EOF {
@@ -40,7 +53,7 @@ func inForwardHandleConn(conn net.Conn, messageCh chan *fluent.FluentRecordSet, 
 			return
 		}
 		for _, recordSet := range recordSets {
-			messageCh <- &recordSet
+			f.messageCh <- &recordSet
 		}
 	}
 }

@@ -45,7 +45,11 @@ func TestForwardSingle(t *testing.T) {
 	addr, mockCloser := runMockServer(t, "", &counter)
 	configServer := newConfigServer(addr)
 	msgCh, monCh := hydra.NewChannel()
-	go hydra.OutForward([]*hydra.ConfigServer{configServer}, msgCh, monCh)
+	outForward, err := hydra.NewOutForward([]*hydra.ConfigServer{configServer}, msgCh, monCh)
+	if err != nil {
+		t.Error(err)
+	}
+	go outForward.Run()
 
 	recordSet := prepareRecordSet()
 	msgCh <- recordSet
@@ -66,7 +70,11 @@ func TestForwardReconnect(t *testing.T) {
 	addr, mockCloser := runMockServer(t, "", &counter)
 	configServer := newConfigServer(addr)
 	msgCh, monCh := hydra.NewChannel()
-	go hydra.OutForward([]*hydra.ConfigServer{configServer}, msgCh, monCh)
+	outForward, err := hydra.NewOutForward([]*hydra.ConfigServer{configServer}, msgCh, monCh)
+	if err != nil {
+		t.Error(err)
+	}
+	go outForward.Run()
 
 	recordSet := prepareRecordSet()
 	msgCh <- recordSet
@@ -109,7 +117,13 @@ func TestForwardFailOver(t *testing.T) {
 		secondaryConfigServer,
 	}
 	msgCh, monCh := hydra.NewChannel()
-	go hydra.OutForward(configServers, msgCh, monCh)
+	outForward, err := hydra.NewOutForward(configServers, msgCh, monCh)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	go outForward.Run()
+
 	sleep(1)
 
 	recordSet := prepareRecordSet()

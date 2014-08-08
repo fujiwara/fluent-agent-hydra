@@ -30,7 +30,7 @@ func main() {
 	flag.BoolVar(&help, "h", false, "show help message")
 	flag.BoolVar(&help, "help", false, "show help message")
 	flag.StringVar(&fieldName, "f", hydra.DefaultFieldName, "fieldname of fluentd log message attribute (DEFAULT: message)")
-	flag.StringVar(&monitorAddr, "monitor", "127.0.0.1:24223", "monitor HTTP server address")
+	flag.StringVar(&monitorAddr, "monitor", "", "monitor HTTP server address")
 	flag.Parse()
 
 	if help {
@@ -53,10 +53,10 @@ func main() {
 			log.Println("Can't load config", err)
 			os.Exit(2)
 		}
-		runWithConfig(config)
+		run(config)
 	} else if args := flag.Args(); len(args) >= 3 {
 		config := hydra.NewConfigByArgs(args, fieldName, monitorAddr)
-		runWithConfig(config)
+		run(config)
 	} else {
 		usage()
 	}
@@ -76,25 +76,42 @@ func usage() {
 	os.Exit(1)
 }
 
-func runWithConfig(config *hydra.Config) {
+func run(config *hydra.Config) {
 	messageCh, monitorCh := hydra.NewChannel()
 
 	// start monitor server
-	_, err := hydra.MonitorProcess(config, monitorCh)
+	monitor, err := hydra.NewMonitor(config, monitorCh)
 	if err != nil {
 		log.Println("[error] Couldn't start monitor server.", err)
+	} else {
+		go monitor.Run()
 	}
 
 	// start out_forward
-	go hydra.OutForward(config.Servers, messageCh, monitorCh)
+	outForward, err := hydra.NewOutForward(config.Servers, messageCh, monitorCh)
+	if err != nil {
+		log.Println("[error]", err)
+	} else {
+		go outForward.Run()
+	}
 
 	// start in_tail
 	for _, configLogfile := range config.Logs {
-		go hydra.InTail(configLogfile, messageCh, monitorCh)
+		tail, err := hydra.NewInTail(configLogfile, messageCh, monitorCh)
+		if err != nil {
+			log.Println("[error]", err)
+		} else {
+			go tail.Run()
+		}
 	}
 
 	// start in_forward
 	for _, configReceiver := range config.Receivers {
-		hydra.InForward(configReceiver, messageCh, monitorCh)
+		inForward, err := hydra.NewInForward(configReceiver, messageCh, monitorCh)
+		if err != nil {
+			log.Println("[error]", err)
+		} else {
+			go inForward.Run()
+		}
 	}
 }

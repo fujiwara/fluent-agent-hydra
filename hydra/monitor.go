@@ -2,12 +2,12 @@ package hydra
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"sync"
 	"time"
-	"fmt"
 )
 
 type Stats struct {
@@ -71,35 +71,53 @@ func (ss *Stats) WriteJSON(w http.ResponseWriter) {
 	encoder.Encode(ss)
 }
 
-func (ss *Stats) RecieveStat(ch chan Stat) {
+func (ss *Stats) Run(ch chan Stat) {
 	for {
 		s := <-ch
 		s.ApplyTo(ss)
 	}
 }
 
-func MonitorProcess(config *Config, monitorCh chan Stat) (net.Addr, error) {
-	ss := &Stats{
+type Monitor struct {
+	stats     *Stats
+	address   string
+	Addr      net.Addr
+	listener  net.Listener
+	monitorCh chan Stat
+}
+
+func NewMonitor(config *Config, monitorCh chan Stat) (*Monitor, error) {
+	stats := &Stats{
 		Sent:    make(map[string]*SentStat),
 		Files:   make(map[string]*FileStat),
 		Servers: make([]*ServerStat, len(config.Servers)),
 	}
-	go ss.RecieveStat(monitorCh)
-
-	if config.MonitorAddress == "" {
-		return nil, nil
+	go stats.Run(monitorCh)
+	monitor := &Monitor{
+		stats:     stats,
+		address:   config.MonitorAddress,
+		monitorCh: monitorCh,
 	}
-	listener, err := net.Listen("tcp", config.MonitorAddress)
+	if monitor.address == "" {
+		return monitor, nil
+	}
+	listener, err := net.Listen("tcp", monitor.address)
 	if err != nil {
+		log.Println("[error]", err)
 		return nil, err
 	}
+	monitor.listener = listener
+	monitor.Addr = listener.Addr()
+	return monitor, nil
+}
+
+func (m *Monitor) Run() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		ss.WriteJSON(w)
+		m.stats.WriteJSON(w)
 	})
-	go http.Serve(listener, nil)
-	log.Printf("[info] Monitor server listening http://%s/\n", listener.Addr())
-	return listener.Addr(), err
+	go http.Serve(m.listener, nil)
+	log.Printf("[info] Monitor server listening http://%s/\n", m.listener.Addr())
 }
 
 func monitorError(err error) string {

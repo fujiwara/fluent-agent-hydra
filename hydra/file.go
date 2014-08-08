@@ -22,12 +22,12 @@ var (
 
 type File struct {
 	*os.File
-	Path      string
-	Tag       string
-	Position  int64
-	contBuf   []byte
-	lastStat  os.FileInfo
-	FieldName string
+	Path       string
+	Tag        string
+	Position   int64
+	contBuf    []byte
+	lastStat   os.FileInfo
+	FieldName  string
 }
 
 func newTrailFile(path string, tag string, fieldName string, startPos int64, monitorCh chan Stat) *File {

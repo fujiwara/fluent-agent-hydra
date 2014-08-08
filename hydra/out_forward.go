@@ -6,23 +6,42 @@ import (
 	"time"
 )
 
-// OutForward ... recieve FluentRecordSet from channel, and send it to passed loggers until success.
-func OutForward(configServers []*ConfigServer, messageCh chan *fluent.FluentRecordSet, monitorCh chan Stat) {
+type OutForward struct {
+	loggers   []*fluent.Fluent
+	messageCh chan *fluent.FluentRecordSet
+	monitorCh chan Stat
+}
 
+const (
+	serverHealthCheckInterval = 3 * time.Second
+)
+
+// OutForward ... recieve FluentRecordSet from channel, and send it to passed loggers until success.
+func NewOutForward(configServers []*ConfigServer, messageCh chan *fluent.FluentRecordSet, monitorCh chan Stat) (*OutForward, error) {
 	loggers := make([]*fluent.Fluent, len(configServers))
 	for i, server := range configServers {
 		logger, err := fluent.New(fluent.Config{Server: server.Address()})
 		if err != nil {
-			log.Println("[warning] Can't initialize fluentd server.", err)
+			log.Println("[warning]", err)
 		} else {
 			log.Println("[info] server", server.Address())
 		}
 		loggers[i] = logger
 		logger.Send([]byte{})
-		go checkServerHealth(i, logger, monitorCh)
+	}
+	return &OutForward{
+		loggers:   loggers,
+		messageCh: messageCh,
+		monitorCh: monitorCh,
+	}, nil
+}
+
+func (f *OutForward) Run() {
+	for i, _ := range f.loggers {
+		go f.checkServerHealth(i)
 	}
 	for {
-		err := outForwardRecieve(messageCh, monitorCh, loggers...)
+		err := f.outForwardRecieve()
 		if err != nil {
 			if _, ok := err.(*ShutdownType); ok {
 				log.Println("[info]", err)
@@ -32,13 +51,13 @@ func OutForward(configServers []*ConfigServer, messageCh chan *fluent.FluentReco
 			}
 		}
 	}
-	panic("xxx")
+
 }
 
-func outForwardRecieve(messageCh chan *fluent.FluentRecordSet, monitorCh chan Stat, loggers ...*fluent.Fluent) error {
-	recordSet, ok := <-messageCh
+func (f *OutForward) outForwardRecieve() error {
+	recordSet, ok := <-f.messageCh
 	if !ok {
-		for _, logger := range loggers {
+		for _, logger := range f.loggers {
 			logger.Shutdown()
 		}
 		return &ShutdownType{"Shutdown forward process"}
@@ -50,7 +69,7 @@ func outForwardRecieve(messageCh chan *fluent.FluentRecordSet, monitorCh chan St
 	}
 	for {
 	LOGGER:
-		for _, logger := range loggers {
+		for _, logger := range f.loggers {
 			if logger.IsReconnecting() {
 				continue LOGGER
 			}
@@ -59,7 +78,7 @@ func outForwardRecieve(messageCh chan *fluent.FluentRecordSet, monitorCh chan St
 				log.Println("[error]", err)
 				continue LOGGER
 			}
-			monitorCh <- &SentStat{
+			f.monitorCh <- &SentStat{
 				Tag:      recordSet.Tag,
 				Messages: int64(len(recordSet.Records)),
 				Bytes:    int64(len(packed)),
@@ -79,14 +98,14 @@ func outForwardRecieve(messageCh chan *fluent.FluentRecordSet, monitorCh chan St
 	}
 }
 
-func checkServerHealth(i int, logger *fluent.Fluent, monitorCh chan Stat) {
-	c := time.Tick(3 * time.Second)
+func (f *OutForward) checkServerHealth(i int) {
+	c := time.Tick(serverHealthCheckInterval)
 	for _ = range c {
-		monitorCh <- &ServerStat{
+		f.monitorCh <- &ServerStat{
 			Index:   i,
-			Address: logger.Server,
-			Alive:   logger.Alive(),
-			Error:   logger.LastErrorString(),
+			Address: f.loggers[i].Server,
+			Alive:   f.loggers[i].Alive(),
+			Error:   f.loggers[i].LastErrorString(),
 		}
 	}
 }
