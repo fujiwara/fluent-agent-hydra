@@ -105,7 +105,7 @@ func (f *File) tailAndSend(messageCh chan *fluent.FluentRecordSet, monitorCh cha
 	for {
 		readBuf := make([]byte, ReadBufferSize)
 		sendBuf := make([]byte, 0, ReadBufferSize*2)
-		n, err := io.ReadFull(f, readBuf)
+		n, err := io.ReadAtLeast(f, readBuf, 1)
 		if n == 0 {
 			return err
 		}
