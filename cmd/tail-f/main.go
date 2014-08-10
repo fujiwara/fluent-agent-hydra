@@ -28,6 +28,7 @@ func main() {
 	inTail, err := hydra.NewInTail(config, watcher, messageCh, monitorCh)
 	go watcher.Run()
 	go inTail.Run()
+	done := make(chan interface{})
 	for {
 		recordSet := <-messageCh
 		for _, record := range recordSet.Records {
@@ -37,4 +38,5 @@ func main() {
 			}
 		}
 	}
+	<-done
 }
