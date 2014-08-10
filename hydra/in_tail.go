@@ -82,15 +82,22 @@ func (w *Watcher) WatchFile(filename string) (chan *fsnotify.FileEvent, error) {
 	}
 }
 
+func Rel2Abs(filename string) (string, error) {
+	if filepath.IsAbs(filename) {
+		return filename, nil
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		log.Println("[error] Couldn't get current working dir.", err)
+		return "", err
+	}
+	return filepath.Join(cwd, filename), nil
+}
+
 func NewInTail(config *ConfigLogfile, watcher *Watcher, messageCh chan *fluent.FluentRecordSet, monitorCh chan Stat) (*InTail, error) {
-	filename := config.File
-	if !filepath.IsAbs(filename) { // rel path to abs path
-		cwd, err := os.Getwd()
-		if err != nil {
-			log.Println("[error] Couldn't get current working dir.", err)
-			return nil, err
-		}
-		filename = filepath.Join(cwd, filename)
+	filename, err := Rel2Abs(config.File)
+	if err != nil {
+		return nil, err
 	}
 	eventCh, err := watcher.WatchFile(filename)
 	if err != nil {
