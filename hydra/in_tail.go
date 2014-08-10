@@ -46,6 +46,10 @@ func NewWatcher() (*Watcher, error) {
 }
 
 func (w *Watcher) Run() {
+	if len(w.watchingFile) == 0 {
+		log.Println("[error] no watching file. watcher aborted.")
+		return
+	}
 	for {
 		select {
 		case ev := <-w.watcher.Event:

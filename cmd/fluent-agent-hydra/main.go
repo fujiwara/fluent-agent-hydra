@@ -96,21 +96,20 @@ func run(config *hydra.Config) {
 	}
 
 	// start watcher && in_tail
-	var watcher *hydra.Watcher
 	if len(config.Logs) > 0 {
 		watcher, err := hydra.NewWatcher()
 		if err != nil {
 			log.Println("[error]", err)
 		}
-		go watcher.Run()
-	}
-	for _, configLogfile := range config.Logs {
-		tail, err := hydra.NewInTail(configLogfile, watcher, messageCh, monitorCh)
-		if err != nil {
-			log.Println("[error]", err)
-		} else {
-			go tail.Run()
+		for _, configLogfile := range config.Logs {
+			tail, err := hydra.NewInTail(configLogfile, watcher, messageCh, monitorCh)
+			if err != nil {
+				log.Println("[error]", err)
+			} else {
+				go tail.Run()
+			}
 		}
+		go watcher.Run()
 	}
 
 	// start in_forward

@@ -62,12 +62,12 @@ func TestTrail(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	go watcher.Run()
 	inTail, err := hydra.NewInTail(configLogfile, watcher, msgCh, monCh)
 	if err != nil {
 		t.Error(err)
 	}
 	go inTail.Run()
+	go watcher.Run()
 
 	resultCh := make(chan string)
 	go reciever(t, msgCh, "test", resultCh)

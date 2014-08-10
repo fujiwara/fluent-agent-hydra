@@ -112,6 +112,9 @@ func NewMonitor(config *Config, monitorCh chan Stat) (*Monitor, error) {
 }
 
 func (m *Monitor) Run() {
+	if m.listener == nil {
+		return
+	}
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		m.stats.WriteJSON(w)
