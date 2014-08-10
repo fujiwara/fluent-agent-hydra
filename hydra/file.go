@@ -39,11 +39,7 @@ func newTrailFile(path string, tag string, fieldName string, startPos int64, mon
 			f.Tag = tag
 			f.FieldName = fieldName
 			log.Println("[info] Trailing file:", f.Path, "tag:", f.Tag)
-			monitorCh <- &FileStat{
-				Tag:      tag,
-				File:     path,
-				Position: f.Position,
-			}
+			monitorCh <- f.NewStat()
 			return f
 		}
 		monitorCh <- &FileStat{
@@ -133,11 +129,15 @@ func (f *File) tailAndSend(messageCh chan *fluent.FluentRecordSet, monitorCh cha
 			f.contBuf = readBuf[blockLen+1 : n]
 		}
 		messageCh <- NewFluentRecordSet(f.Tag, f.FieldName, &sendBuf)
-		monitorCh <- &FileStat{
-			File:     f.Path,
-			Position: f.Position,
-			Tag:      f.Tag,
-		}
+		monitorCh <- f.NewStat()
 	}
 	return nil
+}
+
+func (f *File) NewStat() *FileStat {
+	return &FileStat{
+		File:     f.Path,
+		Position: f.Position,
+		Tag:      f.Tag,
+	}
 }

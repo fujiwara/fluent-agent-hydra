@@ -19,13 +19,66 @@ type InTail struct {
 	filename   string
 	tag        string
 	fieldName  string
+	lastReadAt time.Time
 	messageCh  chan *fluent.FluentRecordSet
 	monitorCh  chan Stat
-	watcher    *fsnotify.Watcher
-	lastReadAt time.Time
+	eventCh    chan *fsnotify.FileEvent
 }
 
-func NewInTail(config *ConfigLogfile, messageCh chan *fluent.FluentRecordSet, monitorCh chan Stat) (*InTail, error) {
+type Watcher struct {
+	watcher      *fsnotify.Watcher
+	watchingDir  map[string]bool
+	watchingFile map[string]chan *fsnotify.FileEvent
+}
+
+func NewWatcher() (*Watcher, error) {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		log.Println("[error] Couldn't create file watcher", err)
+		return nil, err
+	}
+	w := &Watcher{
+		watcher:      watcher,
+		watchingDir:  make(map[string]bool),
+		watchingFile: make(map[string]chan *fsnotify.FileEvent),
+	}
+	return w, nil
+}
+
+func (w *Watcher) Run() {
+	for {
+		select {
+		case ev := <-w.watcher.Event:
+			if eventCh, ok := w.watchingFile[ev.Name]; ok {
+				eventCh <- ev
+			}
+		case err := <-w.watcher.Error:
+			log.Println("[warning] watcher error", err)
+		}
+	}
+}
+
+func (w *Watcher) WatchFile(filename string) (chan *fsnotify.FileEvent, error) {
+	parent := filepath.Dir(filename)
+	log.Println("[info] watching events of directory", parent)
+	if _, ok := w.watchingDir[parent]; ok { // already watching
+		ch := make(chan *fsnotify.FileEvent)
+		w.watchingFile[filename] = ch
+		return ch, nil
+	} else {
+		err := w.watcher.Watch(parent)
+		if err != nil {
+			log.Println("[error] Couldn't watch event of", parent, err)
+			return nil, err
+		}
+		w.watchingDir[parent] = true
+		ch := make(chan *fsnotify.FileEvent)
+		w.watchingFile[filename] = ch
+		return ch, nil
+	}
+}
+
+func NewInTail(config *ConfigLogfile, watcher *Watcher, messageCh chan *fluent.FluentRecordSet, monitorCh chan Stat) (*InTail, error) {
 	filename := config.File
 	if !filepath.IsAbs(filename) { // rel path to abs path
 		cwd, err := os.Getwd()
@@ -35,16 +88,8 @@ func NewInTail(config *ConfigLogfile, messageCh chan *fluent.FluentRecordSet, mo
 		}
 		filename = filepath.Join(cwd, filename)
 	}
-	watcher, err := fsnotify.NewWatcher()
+	eventCh, err := watcher.WatchFile(filename)
 	if err != nil {
-		log.Println("[error] Couldn't create file watcher", err)
-		return nil, err
-	}
-	parent := filepath.Dir(filename)
-	log.Println("[info] watching events of directory", parent)
-	err = watcher.Watch(parent)
-	if err != nil {
-		log.Println("[error] Couldn't watch event of", parent, err)
 		return nil, err
 	}
 
@@ -52,10 +97,10 @@ func NewInTail(config *ConfigLogfile, messageCh chan *fluent.FluentRecordSet, mo
 		filename:   filename,
 		tag:        config.Tag,
 		fieldName:  config.FieldName,
+		lastReadAt: time.Now(),
 		messageCh:  messageCh,
 		monitorCh:  monitorCh,
-		watcher:    watcher,
-		lastReadAt: time.Now(),
+		eventCh:    eventCh,
 	}
 	return t, nil
 }
@@ -63,7 +108,6 @@ func NewInTail(config *ConfigLogfile, messageCh chan *fluent.FluentRecordSet, mo
 // InTail follow the tail of file and post BulkMessage to channel.
 func (t *InTail) Run() {
 	defer log.Println("[error] Aborted to in_tail.run()")
-	defer t.watcher.Close()
 
 	log.Println("[info] Trying trail file", t.filename)
 	f := newTrailFile(t.filename, t.tag, t.fieldName, SEEK_TAIL, t.monitorCh)
@@ -82,24 +126,18 @@ func (t *InTail) Run() {
 
 func (t *InTail) watchFileEvent(f *File) error {
 	select {
-	case ev := <-t.watcher.Event:
-		if ev.Name != t.filename {
-			return nil
-		}
+	case ev := <-t.eventCh:
 		if ev.IsModify() {
 			break
 		}
 		if ev.IsDelete() || ev.IsRename() {
-			log.Println("[info]", ev.Name)
+			log.Println("[info] fsevent", ev)
 			f.tailAndSend(t.messageCh, t.monitorCh)
 			f.Close()
 			return errors.New(t.filename + " was closed")
 		} else if ev.IsCreate() {
 			return nil
 		}
-	case err := <-t.watcher.Error:
-		log.Println("[warning]", err)
-		return nil
 	case <-time.After(TailInterval):
 	}
 

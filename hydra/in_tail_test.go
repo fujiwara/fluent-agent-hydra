@@ -58,7 +58,12 @@ func TestTrail(t *testing.T) {
 		FieldName: "message",
 	}
 	msgCh, monCh := hydra.NewChannel()
-	inTail, err := hydra.NewInTail(configLogfile, msgCh, monCh)
+	watcher, err := hydra.NewWatcher()
+	if err != nil {
+		t.Error(err)
+	}
+	go watcher.Run()
+	inTail, err := hydra.NewInTail(configLogfile, watcher, msgCh, monCh)
 	if err != nil {
 		t.Error(err)
 	}
