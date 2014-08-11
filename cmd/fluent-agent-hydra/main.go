@@ -13,7 +13,6 @@ import (
 
 var (
 	version     string
-	revision    string
 	buildDate   string
 	trapSignals = []os.Signal{
 		syscall.SIGHUP,
@@ -41,7 +40,6 @@ func main() {
 
 	if showVersion {
 		fmt.Println("version:", version)
-		fmt.Println("revision:", revision)
 		fmt.Println("build:", buildDate)
 		os.Exit(0)
 	}
