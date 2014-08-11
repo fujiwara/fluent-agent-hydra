@@ -1,3 +1,7 @@
+GIT_REV := $(shell git rev-parse --short HEAD)
+GIT_VER := $(shell git describe --tags)
+DATE := $(shell date +%Y-%m-%dT%H:%M:%S%z)
+
 all: test
 	go get github.com/fujiwara/fluent-agent-hydra/cmd/fluent-agent-hydra
 	go get github.com/fujiwara/fluent-agent-hydra/cmd/in-forward-benchmarkd
@@ -12,4 +16,4 @@ get-deps:
 	go get github.com/t-k/fluent-logger-golang/fluent
 
 binary:
-	cd cmd/fluent-agent-hydra && gox -os="linux darwin" -arch="amd64 i386" -output "../pkg/{{.OS}}_{{.Arch}}/{{.Dir}}"
+	cd cmd/fluent-agent-hydra && gox -os="linux darwin" -arch="amd64 i386" -output "../../pkg/{{.OS}}_{{.Arch}}/{{.Dir}}" -ldflags "-X main.revision ${GIT_REV} -X main.version ${GIT_VER} -X main.buildDate ${DATE}"

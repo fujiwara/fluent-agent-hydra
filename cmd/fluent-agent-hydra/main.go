@@ -12,6 +12,9 @@ import (
 )
 
 var (
+	version     string
+	revision    string
+	buildDate   string
 	trapSignals = []os.Signal{
 		syscall.SIGHUP,
 		syscall.SIGINT,
@@ -25,14 +28,23 @@ func main() {
 		help        bool
 		fieldName   string
 		monitorAddr string
+		showVersion bool
 	)
 	flag.StringVar(&configFile, "c", "", "configuration file path")
 	flag.BoolVar(&help, "h", false, "show help message")
 	flag.BoolVar(&help, "help", false, "show help message")
 	flag.StringVar(&fieldName, "f", hydra.DefaultFieldName, "fieldname of fluentd log message attribute (DEFAULT: message)")
 	flag.StringVar(&monitorAddr, "monitor", "", "monitor HTTP server address")
+	flag.BoolVar(&showVersion, "v", false, "show version")
+	flag.BoolVar(&showVersion, "version", false, "show version")
 	flag.Parse()
 
+	if showVersion {
+		fmt.Println("version:", version)
+		fmt.Println("revision:", revision)
+		fmt.Println("build:", buildDate)
+		os.Exit(0)
+	}
 	if help {
 		usage()
 	}
