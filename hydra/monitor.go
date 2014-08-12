@@ -11,10 +11,11 @@ import (
 )
 
 type Stats struct {
-	Sent    map[string]*SentStat `json:"sent"`
-	Files   map[string]*FileStat `json:"files"`
-	Servers []*ServerStat        `json:"servers"`
-	mu      sync.Mutex
+	Sent     map[string]*SentStat `json:"sent"`
+	Files    map[string]*FileStat `json:"files"`
+	Servers  []*ServerStat        `json:"servers"`
+	Receiver *ReceiverStat        `json:"receiver"`
+	mu       sync.Mutex
 }
 
 type Stat interface {
@@ -41,6 +42,16 @@ type FileStat struct {
 	Error    string `json:"error"`
 }
 
+type ReceiverStat struct {
+	Address            string `json:"address"`
+	Connections        int    `json:"-"`
+	TotalConnections   int    `json:"total_connections"`
+	CurrentConnections int    `json:"current_connections"`
+	Messages           int64  `json:"messages"`
+	Disposed           int64  `json:"disposed"`
+	Buffered           int64  `json:"buffered"`
+}
+
 func (s *FileStat) ApplyTo(ss *Stats) {
 	ss.mu.Lock()
 	defer ss.mu.Unlock()
@@ -62,6 +73,24 @@ func (s *SentStat) ApplyTo(ss *Stats) {
 	} else {
 		ss.Sent[s.Tag] = s
 	}
+}
+
+func (s *ReceiverStat) ApplyTo(ss *Stats) {
+	if ss.Receiver == nil {
+		ss.Receiver = s
+		return
+	}
+	rs := ss.Receiver
+	if s.Address != "" {
+		rs.Address = s.Address
+	}
+	if s.Connections > 0 {
+		rs.TotalConnections += s.Connections
+	}
+	rs.CurrentConnections += s.Connections
+	rs.Messages += s.Messages
+	rs.Disposed += s.Disposed
+	rs.Buffered = s.Buffered
 }
 
 func (ss *Stats) WriteJSON(w http.ResponseWriter) {

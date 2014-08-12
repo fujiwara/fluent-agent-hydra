@@ -37,12 +37,7 @@ func TestReadConfig(t *testing.T) {
 		t.Errorf("invalid Logs[1] got %#v", config.Logs[1])
 	}
 
-
-	if len(config.Receivers) != 1 {
-		t.Errorf("invalid Receivers got %#v", config.Receivers)
+	if config.Receiver.Host != "localhost" || config.Receiver.Port != 24224 {
+		t.Errorf("invalid Receiver got %#v", config.Receiver)
 	}
-	if config.Receivers[0].Host != "localhost" || config.Receivers[0].Port != 24224 {
-		t.Errorf("invalid Receivers[0] got %#v", config.Receivers[0])
-	}
-
 }

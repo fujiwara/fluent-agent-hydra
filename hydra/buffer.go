@@ -2,24 +2,23 @@ package hydra
 
 import (
 	"container/list"
-	"errors"
+	"github.com/fujiwara/fluent-agent-hydra/fluent"
 )
 
 type MessageQueue struct {
-	list      *list.List
-	locker    chan int
-	maxLength int
-	drain     bool
-	disposed  int
+	list        *list.List
+	locker      chan interface{}
+	messages    int64
+	maxMessages int64
 }
 
-func NewMessageQueue(maxLength int, drain bool) *MessageQueue {
-	ch := make(chan int, 1)
+func NewMessageQueue(maxMessages int) *MessageQueue {
+	locker := make(chan interface{}, 1)
 	q := &MessageQueue{
-		list:      list.New(),
-		locker:    ch,
-		maxLength: maxLength,
-		drain:     drain,
+		list:        list.New(),
+		locker:      locker,
+		messages:    0,
+		maxMessages: int64(maxMessages),
 	}
 	q.unlock()
 	return q
@@ -30,32 +29,36 @@ func (q *MessageQueue) lock() {
 }
 
 func (q *MessageQueue) unlock() {
-	q.locker <- 1
+	q.locker <- nil
 }
 
-func (q *MessageQueue) Enqueue(value interface{}) error {
+func (q *MessageQueue) Enqueue(recordSet *fluent.FluentRecordSet) int64 {
 	q.lock()
 	defer q.unlock()
-	if q.list.Len() >= q.maxLength {
-		if q.drain {
-			q.dequeue() // dispose first value
-			q.disposed++
-		} else {
-			return errors.New("queue is full")
-		}
+	messages := int64(len(recordSet.Records))
+	disposed := int64(0)
+	for q.messages+messages > q.maxMessages && q.list.Len() > 0 {
+		_rs := q.dequeue() // dispose first value
+		rs := _rs.(*fluent.FluentRecordSet)
+		disposed += int64(len(rs.Records))
+		q.messages -= int64(len(rs.Records))
 	}
-	q.list.PushBack(value)
-	return nil
+	q.list.PushBack(recordSet)
+	q.messages += messages
+	return disposed
 }
 
-func (q *MessageQueue) Dequeue() (interface{}, bool) {
+func (q *MessageQueue) Dequeue() (*fluent.FluentRecordSet, bool) {
 	q.lock()
 	defer q.unlock()
 	if q.list.Len() == 0 {
+		q.messages = 0
 		return nil, false
 	}
-	value := q.dequeue()
-	return value, true
+	_rs := q.dequeue()
+	rs := _rs.(*fluent.FluentRecordSet)
+	q.messages -= int64(len(rs.Records))
+	return rs, true
 }
 
 func (q *MessageQueue) dequeue() interface{} {
@@ -65,11 +68,5 @@ func (q *MessageQueue) dequeue() interface{} {
 func (q *MessageQueue) Len() int {
 	q.lock()
 	defer q.unlock()
-	return q.list.Len()
-}
-
-func (q *MessageQueue) Disposed() int {
-	q.lock()
-	defer q.unlock()
-	return q.disposed
+	return int(q.messages)
 }

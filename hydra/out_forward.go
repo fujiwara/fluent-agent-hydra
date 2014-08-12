@@ -24,7 +24,7 @@ func NewOutForward(configServers []*ConfigServer, messageCh chan *fluent.FluentR
 		if err != nil {
 			log.Println("[warning]", err)
 		} else {
-			log.Println("[info] server", server.Address())
+			log.Println("[info] Server", server.Address(), "connected")
 		}
 		loggers[i] = logger
 		logger.Send([]byte{})

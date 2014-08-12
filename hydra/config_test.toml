@@ -1,6 +1,6 @@
 TagPrefix = "foo"    # comment
 
-[[Receivers]]
+[Receiver]
 Host = "localhost"
 Port = 24224
 

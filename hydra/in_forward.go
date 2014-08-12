@@ -6,13 +6,20 @@ import (
 	"io"
 	"log"
 	"net"
+	"time"
+)
+
+const (
+	FlashInterval = 200 * time.Millisecond
 )
 
 type InForward struct {
-	listener  net.Listener
-	Addr      net.Addr
-	messageCh chan *fluent.FluentRecordSet
-	monitorCh chan Stat
+	index        int
+	listener     net.Listener
+	Addr         net.Addr
+	messageCh    chan *fluent.FluentRecordSet
+	monitorCh    chan Stat
+	messageQueue *MessageQueue
 }
 
 func NewInForward(config *ConfigReceiver, messageCh chan *fluent.FluentRecordSet, monitorCh chan Stat) (*InForward, error) {
@@ -22,26 +29,53 @@ func NewInForward(config *ConfigReceiver, messageCh chan *fluent.FluentRecordSet
 		log.Println("[error]", err)
 		return nil, err
 	}
-	log.Println("[info] Server listing", l.Addr())
-	return &InForward{
-		listener:  l,
-		Addr:      l.Addr(),
-		messageCh: messageCh,
-		monitorCh: monitorCh,
-	}, nil
+	log.Println("[info] Receiver listing", l.Addr())
+	f := &InForward{
+		listener:     l,
+		Addr:         l.Addr(),
+		messageCh:    messageCh,
+		monitorCh:    monitorCh,
+		messageQueue: NewMessageQueue(config.MaxBufferMessages),
+	}
+	monitorCh <- &ReceiverStat{
+		Address: f.Addr.String(),
+	}
+	return f, nil
 }
 
 func (f *InForward) Run() {
+	go f.feed()
 	for {
 		conn, err := f.listener.Accept()
 		if err != nil {
 			log.Println("[error] accept error", err)
 		}
-		go f.inForwardHandleConn(conn)
+		f.monitorCh <- &ReceiverStat{
+			Connections: 1,
+		}
+		go f.handleConn(conn)
 	}
 }
 
-func (f *InForward) inForwardHandleConn(conn net.Conn) {
+func (f *InForward) feed() {
+	for {
+		if rs, ok := f.messageQueue.Dequeue(); ok {
+			f.messageCh <- rs
+		} else {
+			<-time.After(FlashInterval)
+			f.monitorCh <- &ReceiverStat{
+				Buffered: int64(f.messageQueue.Len()),
+			}
+		}
+	}
+}
+
+func (f *InForward) handleConn(conn net.Conn) {
+	defer func() {
+		f.monitorCh <- &ReceiverStat{
+			Connections: -1,
+		}
+	}()
 	for {
 		recordSets, err := fluent.DecodeEntries(conn)
 		if err == io.EOF {
@@ -52,8 +86,17 @@ func (f *InForward) inForwardHandleConn(conn net.Conn) {
 			conn.Close()
 			return
 		}
+		m := int64(0)
+		d := int64(0)
 		for _, recordSet := range recordSets {
-			f.messageCh <- &recordSet
+			rs := &recordSet
+			d += f.messageQueue.Enqueue(rs)
+			m += int64(len(rs.Records))
+		}
+		f.monitorCh <- &ReceiverStat{
+			Messages: m,
+			Disposed: d,
+			Buffered: int64(f.messageQueue.Len()),
 		}
 	}
 }

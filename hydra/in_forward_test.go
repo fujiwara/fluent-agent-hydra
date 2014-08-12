@@ -12,8 +12,9 @@ import (
 
 func TestInForward(t *testing.T) {
 	config := &hydra.ConfigReceiver{
-		Host: "127.0.0.1",
-		Port: 0,
+		Host:              "127.0.0.1",
+		Port:              0,
+		MaxBufferMessages: 1000,
 	}
 	messageCh, monitorCh := hydra.NewChannel()
 	inForward, err := hydra.NewInForward(config, messageCh, monitorCh)

@@ -9,8 +9,9 @@ import (
 )
 
 const (
-	DefaultFluentdPort = 24224
-	DefaultFieldName   = "message"
+	DefaultFluentdPort       = 24224
+	DefaultFieldName         = "message"
+	DefaultMaxBufferMessages = 1024 * 1024
 )
 
 type Config struct {
@@ -18,7 +19,7 @@ type Config struct {
 	FieldName      string
 	Servers        []*ConfigServer
 	Logs           []*ConfigLogfile
-	Receivers      []*ConfigReceiver
+	Receiver       *ConfigReceiver
 	MonitorAddress string
 }
 
@@ -34,8 +35,9 @@ type ConfigLogfile struct {
 }
 
 type ConfigReceiver struct {
-	Host string
-	Port int
+	Host              string
+	Port              int
+	MaxBufferMessages int
 }
 
 func ReadConfig(filename string) (*Config, error) {
@@ -95,6 +97,12 @@ func (cr *ConfigReceiver) Restrict(c *Config) {
 	if cr.Port == 0 {
 		cr.Port = DefaultFluentdPort
 	}
+	switch cr.MaxBufferMessages {
+	case 0:
+		cr.MaxBufferMessages = DefaultMaxBufferMessages
+	case -1:
+		cr.MaxBufferMessages = 0
+	}
 }
 
 func (cs *ConfigServer) Address() string {
@@ -120,7 +128,5 @@ func (c *Config) Restrict() {
 	for _, subconf := range c.Logs {
 		subconf.Restrict(c)
 	}
-	for _, subconf := range c.Receivers {
-		subconf.Restrict(c)
-	}
+	c.Receiver.Restrict(c)
 }

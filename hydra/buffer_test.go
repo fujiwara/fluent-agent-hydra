@@ -2,114 +2,86 @@ package hydra_test
 
 import (
 	"fmt"
+	"github.com/fujiwara/fluent-agent-hydra/fluent"
 	"github.com/fujiwara/fluent-agent-hydra/hydra"
-	"log"
 	"testing"
 	"time"
 )
 
-func TestMessageQueue(t *testing.T) {
-	length := 10
-	queue := hydra.NewMessageQueue(length, false)
-	for i := 0; i < length; i++ {
-		v := fmt.Sprintf("message%d", i)
-		err := queue.Enqueue(v)
-		if err != nil {
-			t.Error(err)
-		}
-		if queue.Len() != i+1 {
-			t.Error("invalid queue.Len()", queue)
-		}
-	}
-	err := queue.Enqueue("must be overflow")
-	if err == nil {
-		t.Error("not blocked enqueu", queue)
-	}
-	v, ok := queue.Dequeue()
-	if !ok {
-		t.Error("dequeue failed", queue)
-	}
-	if v.(string) != "message0" {
-		t.Error("invalid dequeued value", v)
-	}
-}
-
-func TestMessageQueueMultiThreaded(t *testing.T) {
-	threads := 4
-	n := 100
-	queue := hydra.NewMessageQueue(n * threads * 2, false)
-	done := make(chan int)
-
-	for i := 0; i < threads; i++ {
-		go testDoEnqueue(t, queue, n)
-		go testDoDequeue(t, queue, n, done)
-	}
-	dequeued := 0
-DEQUEUE:
-	for i := 0; i < threads; i++ {
-		select {
-		case <-time.After(1 * time.Second):
-			break DEQUEUE
-		case x := <-done:
-			log.Println("dequeued", x)
-			dequeued += x
-		}
-	}
-	if dequeued != n * threads {
-		t.Errorf("enqueued", n, "dequeued", dequeued)
-	}
-}
-
-func testDoEnqueue(t *testing.T, queue *hydra.MessageQueue, n int) {
+func newDummyRecordSet(n int) *fluent.FluentRecordSet {
+	records := make([]fluent.TinyFluentRecord, n)
+	ts := uint64(time.Now().Unix())
 	for i := 0; i < n; i++ {
-		err := queue.Enqueue(i)
-		if err != nil {
-			t.Error("enqueue failed", err)
+		data := make(map[string]interface{})
+		data["message"] = []byte(fmt.Sprintf("message%d", i))
+		records[i] = fluent.TinyFluentRecord{
+			Timestamp: ts,
+			Data:      data,
 		}
 	}
-	log.Println("enqueued", n)
+	rs := &fluent.FluentRecordSet{
+		Tag:     "dummy",
+		Records: records,
+	}
+	return rs
+
 }
 
-func testDoDequeue(t *testing.T, queue *hydra.MessageQueue, n int, done chan int) {
-	dequeued := 0
-	for dequeued < n {
+func TestMessageQueue(t *testing.T) {
+	n := 10
+	queue := hydra.NewMessageQueue(55)
+	for i := 1; i <= n; i++ {
+		rs := newDummyRecordSet(i)
+		queue.Enqueue(rs)
+	}
+	if queue.Len() != 55 {
+		t.Errorf("invalid queue.Len() %d expected 55", queue.Len())
+	}
+
+	// [1 2 3 4 5 6 7 8 9 10] + 1 => disposed=[1]
+	d := queue.Enqueue(newDummyRecordSet(1))
+	if queue.Len() != 55 {
+		t.Errorf("invalud queue.Len() %d", queue.Len())
+	}
+	if d != 1 {
+		t.Errorf("invalid disposed", d)
+	}
+
+	// [2 3 4 5 6 7 8 9 10 1] + 10 => disposed=[2 3 4 5]
+	d = queue.Enqueue(newDummyRecordSet(10))
+	if queue.Len() != 51 {
+		t.Errorf("invalud queue.Len() %d", queue.Len())
+	}
+	if d != 14 {
+		t.Errorf("invalid disposed", d)
+	}
+
+	// [6 7 8 9 10 1 10] => [7 8 9 10 1 10]
+	rs, ok := queue.Dequeue()
+	if !ok || len(rs.Records) != 6 {
+		t.Error("invalid dequeued rs", rs)
+	}
+	if queue.Len() != 45 {
+		t.Error("invalid dequeued rs", rs)
+	}
+
+	// [7 8 9 10 1 10] => []
+	for i := 0; i < 6; i++ {
 		_, ok := queue.Dequeue()
-		if ok {
-			dequeued++
+		if !ok {
+			t.Error("dequeue failed")
 		}
 	}
-	done <- dequeued
-}
+	if queue.Len() != 0 {
+		t.Error("queue must be empty", queue.Len())
+	}
 
-
-func TestMessageQueueDispose(t *testing.T) {
-	length := 10
-	queue := hydra.NewMessageQueue(length, true)
-	for i := 0; i < length; i++ {
-		v := fmt.Sprintf("message%d", i)
-		err := queue.Enqueue(v)
-		if err != nil {
-			t.Error(err)
-		}
-		if queue.Len() != i+1 {
-			t.Error("invalid queue.Len()", queue)
-		}
+	// [] => []
+	rs, ok = queue.Dequeue()
+	if ok || rs != nil {
+		t.Error("dequeue must failed", rs, ok)
 	}
-	err := queue.Enqueue("must be disposed first")
-	if err != nil {
-		t.Error("queue is full?", err)
-	}
-	if queue.Len() != length {
-		t.Error("invalid queue length", queue.Len())
-	}
-	if queue.Disposed() != 1 {
-		t.Error("invalid queue disposed", queue.Disposed())
-	}
-	v, ok := queue.Dequeue()
-	if !ok {
-		t.Error("dequeue failed", queue)
-	}
-	if v.(string) != "message1" {
-		t.Error("invalid dequeued value", v)
+	if queue.Len() != 0 {
+		t.Error("invaid queue.Len()", queue.Len())
 	}
 }
