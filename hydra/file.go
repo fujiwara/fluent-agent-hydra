@@ -17,7 +17,7 @@ const (
 )
 
 var (
-	ReadBufferSize = 64 * 1024
+	ReadBufferSize = 1024 * 1024
 )
 
 type File struct {

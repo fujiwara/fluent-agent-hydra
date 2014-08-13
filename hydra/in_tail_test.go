@@ -116,7 +116,11 @@ func reciever(t *testing.T, ch chan *fluent.FluentRecordSet, tag string, resultC
 			t.Errorf("got %v\nwant %v", recordSet.Tag, "test")
 		}
 		for _, record := range recordSet.Records {
-			message := record.Data["message"].([]byte)
+			_message, ok := record.GetData("message")
+			if !ok {
+				return
+			}
+			message := _message.([]byte)
 			recieved = recieved + string(message) + string(hydra.LineSeparator)
 			if strings.Index(string(message), EOFMarker) != -1 {
 				resultCh <- recieved

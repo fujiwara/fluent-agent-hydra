@@ -9,12 +9,12 @@ import (
 )
 
 func newDummyRecordSet(n int) *fluent.FluentRecordSet {
-	records := make([]fluent.TinyFluentRecord, n)
+	records := make([]fluent.FluentRecordType, n)
 	ts := uint64(time.Now().Unix())
 	for i := 0; i < n; i++ {
 		data := make(map[string]interface{})
 		data["message"] = []byte(fmt.Sprintf("message%d", i))
-		records[i] = fluent.TinyFluentRecord{
+		records[i] = &fluent.TinyFluentRecord{
 			Timestamp: ts,
 			Data:      data,
 		}

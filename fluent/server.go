@@ -40,7 +40,7 @@ type FluentRecord struct {
 	Data      map[string]interface{}
 }
 
-func (r *FluentRecord) Pack() ([]byte, error) {
+func (r FluentRecord) Pack() ([]byte, error) {
 	msg := []interface{}{r.Tag, r.Timestamp, r.Data}
 	if data, dumperr := toMsgpack(msg); dumperr != nil {
 		fmt.Println("Can't convert to msgpack:", msg, dumperr)
@@ -50,6 +50,11 @@ func (r *FluentRecord) Pack() ([]byte, error) {
 	}
 }
 
+type FluentRecordType interface {
+	Pack() ([]byte, error)
+	GetData(string) (interface{}, bool)
+}
+
 type TinyFluentRecord struct {
 	Timestamp uint64
 	Data      map[string]interface{}
@@ -57,17 +62,35 @@ type TinyFluentRecord struct {
 
 func (r *TinyFluentRecord) Pack() ([]byte, error) {
 	msg := []interface{}{r.Timestamp, r.Data}
-	if data, dumperr := toMsgpack(msg); dumperr != nil {
-		fmt.Println("Can't convert to msgpack:", msg, dumperr)
-		return nil, dumperr
+	return toMsgpack(msg)
+}
+
+func (r *TinyFluentRecord) GetData(key string) (interface{}, bool) {
+	value, ok := r.Data[key]
+	return value, ok
+}
+
+type TinyFluentRecordMessage struct {
+	Timestamp int64
+	FieldName string
+	Message   []byte
+}
+
+func (r *TinyFluentRecordMessage) Pack() ([]byte, error) {
+	return toMsgpackRecord(r.Timestamp, r.FieldName, r.Message), nil
+}
+
+func (r *TinyFluentRecordMessage) GetData(key string) (interface{}, bool) {
+	if key == r.FieldName {
+		return r.Message, true
 	} else {
-		return data, nil
+		return nil, false
 	}
 }
 
 type FluentRecordSet struct {
 	Tag     string
-	Records []TinyFluentRecord
+	Records []FluentRecordType
 }
 
 func (rs *FluentRecordSet) PackAsPackedForward() ([]byte, error) {
@@ -79,12 +102,7 @@ func (rs *FluentRecordSet) PackAsPackedForward() ([]byte, error) {
 		}
 		buffer = append(buffer, data...)
 	}
-	if data, dumperr := toMsgpack([]interface{}{rs.Tag, buffer}); dumperr != nil {
-		fmt.Println("Can't convert to msgpack")
-		return nil, dumperr
-	} else {
-		return data, nil
-	}
+	return toMsgpackRecordSet(rs.Tag, &buffer), nil
 }
 
 func (rs *FluentRecordSet) PackAsForward() ([]byte, error) {
@@ -116,7 +134,7 @@ func coerceInPlace(data map[string]interface{}) {
 }
 
 func decodeRecordSet(tag []byte, entries []interface{}) (FluentRecordSet, error) {
-	records := make([]TinyFluentRecord, len(entries))
+	records := make([]FluentRecordType, len(entries))
 	for i, _entry := range entries {
 		entry, ok := _entry.([]interface{})
 		if !ok {
@@ -131,7 +149,7 @@ func decodeRecordSet(tag []byte, entries []interface{}) (FluentRecordSet, error)
 			return FluentRecordSet{}, errors.New("Failed to decode data field")
 		}
 		coerceInPlace(data)
-		records[i] = TinyFluentRecord{
+		records[i] = &TinyFluentRecord{
 			Timestamp: timestamp,
 			Data:      data,
 		}
@@ -168,8 +186,8 @@ func DecodeEntries(conn net.Conn) ([]FluentRecordSet, error) {
 		retval = []FluentRecordSet{
 			{
 				Tag: string(tag), // XXX: byte => rune
-				Records: []TinyFluentRecord{
-					{
+				Records: []FluentRecordType{
+					&TinyFluentRecord{
 						Timestamp: timestamp,
 						Data:      data,
 					},
@@ -185,8 +203,8 @@ func DecodeEntries(conn net.Conn) ([]FluentRecordSet, error) {
 		retval = []FluentRecordSet{
 			{
 				Tag: string(tag), // XXX: byte => rune
-				Records: []TinyFluentRecord{
-					{
+				Records: []FluentRecordType{
+					&TinyFluentRecord{
 						Timestamp: timestamp,
 						Data:      data,
 					},

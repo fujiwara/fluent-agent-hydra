@@ -31,11 +31,16 @@ func NewChannel() (chan *fluent.FluentRecordSet, chan Stat) {
 func NewFluentRecordSet(tag string, key string, buffer *[]byte) *fluent.FluentRecordSet {
 	timestamp := uint64(time.Now().Unix())
 	messages := bytes.Split(*buffer, LineSeparator)
-	records := make([]fluent.TinyFluentRecord, len(messages))
+	records := make([]fluent.FluentRecordType, len(messages))
 	for i, message := range messages {
-		records[i] = fluent.TinyFluentRecord{
+/*		records[i] = &fluent.TinyFluentRecordMessage{
+			Timestamp: int64(timestamp),
+			FieldName: key,
+			Message:   message,
+		}*/
+		records[i] = &fluent.TinyFluentRecord{
 			Timestamp: timestamp,
-			Data:      map[string]interface{}{key: message},
+			Data: map[string]interface{}{key: message},
 		}
 	}
 	return &fluent.FluentRecordSet{
