@@ -128,5 +128,7 @@ func (c *Config) Restrict() {
 	for _, subconf := range c.Logs {
 		subconf.Restrict(c)
 	}
-	c.Receiver.Restrict(c)
+	if c.Receiver != nil {
+		c.Receiver.Restrict(c)
+	}
 }

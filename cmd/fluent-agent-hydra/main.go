@@ -123,10 +123,12 @@ func run(config *hydra.Config) {
 	}
 
 	// start in_forward
-	inForward, err := hydra.NewInForward(config.Receiver, messageCh, monitorCh)
-	if err != nil {
-		log.Println("[error]", err)
-	} else {
-		go inForward.Run()
+	if config.Receiver != nil {
+		inForward, err := hydra.NewInForward(config.Receiver, messageCh, monitorCh)
+		if err != nil {
+			log.Println("[error]", err)
+		} else {
+			go inForward.Run()
+		}
 	}
 }
