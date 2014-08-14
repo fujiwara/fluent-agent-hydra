@@ -106,27 +106,23 @@ func (f *File) tailAndSend(messageCh chan *fluent.FluentRecordSet, monitorCh cha
 			return err
 		}
 		f.Position += int64(n)
-		blockLen := bytes.LastIndex(readBuf, LineSeparator)
-		if DEBUG {
-			log.Println("read", n, "blockLen", blockLen)
-		}
-		if blockLen == -1 {
-			// whole of readBuf is continuous line
-			f.contBuf = append(f.contBuf, readBuf[0:n]...)
-			continue
-		} else if blockLen == n-1 {
+		if readBuf[n-1] == '\n' {
 			// readBuf is just terminated by '\n'
 			sendBuf = append(sendBuf, f.contBuf...)
 			sendBuf = append(sendBuf, readBuf[0:n-1]...)
 			f.contBuf = []byte{}
 		} else {
-			// bottom line of readBuf is continuous line
-			if DEBUG {
-				log.Println("contBuf", f.contBuf)
+			blockLen := bytes.LastIndex(readBuf, LineSeparator)
+			if blockLen == -1 {
+				// whole of readBuf is continuous line
+				f.contBuf = append(f.contBuf, readBuf[0:n]...)
+				continue
+			} else {
+				// bottom line of readBuf is continuous line
+				sendBuf = append(sendBuf, f.contBuf...)
+				sendBuf = append(sendBuf, readBuf[0:blockLen]...)
+				f.contBuf = readBuf[blockLen+1 : n]
 			}
-			sendBuf = append(sendBuf, f.contBuf...)
-			sendBuf = append(sendBuf, readBuf[0:blockLen]...)
-			f.contBuf = readBuf[blockLen+1 : n]
 		}
 		messageCh <- NewFluentRecordSet(f.Tag, f.FieldName, &sendBuf)
 		monitorCh <- f.NewStat()
