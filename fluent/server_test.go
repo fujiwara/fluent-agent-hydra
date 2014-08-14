@@ -1,8 +1,8 @@
 package fluent_test
 
 import (
-	"github.com/fujiwara/fluent-agent-hydra/fluent"
 	"fmt"
+	"github.com/fujiwara/fluent-agent-hydra/fluent"
 	"testing"
 	"time"
 )

@@ -1,8 +1,8 @@
 package fluent
 
 import (
-	"encoding/binary"
 	"bytes"
+	"encoding/binary"
 )
 
 const (
