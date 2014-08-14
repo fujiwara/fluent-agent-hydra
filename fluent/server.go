@@ -36,7 +36,7 @@ import (
 
 type FluentRecord struct {
 	Tag       string
-	Timestamp uint64
+	Timestamp int64
 	Data      map[string]interface{}
 }
 
@@ -56,7 +56,7 @@ type FluentRecordType interface {
 }
 
 type TinyFluentRecord struct {
-	Timestamp uint64
+	Timestamp int64
 	Data      map[string]interface{}
 }
 
@@ -70,17 +70,17 @@ func (r *TinyFluentRecord) GetData(key string) (interface{}, bool) {
 	return value, ok
 }
 
-type TinyFluentRecordMessage struct {
+type TinyFluentMessage struct {
 	Timestamp int64
 	FieldName string
 	Message   []byte
 }
 
-func (r *TinyFluentRecordMessage) Pack() ([]byte, error) {
+func (r *TinyFluentMessage) Pack() ([]byte, error) {
 	return toMsgpackRecord(r.Timestamp, r.FieldName, r.Message), nil
 }
 
-func (r *TinyFluentRecordMessage) GetData(key string) (interface{}, bool) {
+func (r *TinyFluentMessage) GetData(key string) (interface{}, bool) {
 	if key == r.FieldName {
 		return r.Message, true
 	} else {
@@ -140,7 +140,7 @@ func decodeRecordSet(tag []byte, entries []interface{}) (FluentRecordSet, error)
 		if !ok {
 			return FluentRecordSet{}, errors.New("Failed to decode recordSet")
 		}
-		timestamp, ok := entry[0].(uint64)
+		timestamp, ok := entry[0].(int64)
 		if !ok {
 			return FluentRecordSet{}, errors.New("Failed to decode timestamp field")
 		}
@@ -176,8 +176,8 @@ func DecodeEntries(conn net.Conn) ([]FluentRecordSet, error) {
 
 	var retval []FluentRecordSet
 	switch timestamp_or_entries := v[1].(type) {
-	case uint64:
-		timestamp := timestamp_or_entries
+	case int64, uint64, int32, uint32:
+		timestamp, _ := timestamp_or_entries.(int64)
 		data, ok := v[2].(map[string]interface{})
 		if !ok {
 			return nil, errors.New("Failed to decode data field")
@@ -195,7 +195,7 @@ func DecodeEntries(conn net.Conn) ([]FluentRecordSet, error) {
 			},
 		}
 	case float64:
-		timestamp := uint64(timestamp_or_entries)
+		timestamp := int64(timestamp_or_entries)
 		data, ok := v[2].(map[string]interface{})
 		if !ok {
 			return nil, errors.New("Failed to decode data field")
