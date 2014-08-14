@@ -77,7 +77,7 @@ type TinyFluentMessage struct {
 }
 
 func (r *TinyFluentMessage) Pack() ([]byte, error) {
-	return toMsgpackRecord(r.Timestamp, r.FieldName, r.Message), nil
+	return toMsgpackTinyMessage(r.Timestamp, r.FieldName, r.Message), nil
 }
 
 func (r *TinyFluentMessage) GetData(key string) (interface{}, bool) {

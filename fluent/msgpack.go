@@ -18,63 +18,71 @@ const (
 	mpBytes32        = 0xc6
 )
 
-func writeMpStringHead(buf *bytes.Buffer, l int) {
+type msgpackBuffer struct {
+	bytes.Buffer
+}
+
+func (b *msgpackBuffer) WriteValue(v interface{}) {
+	binary.Write(b, binary.BigEndian, v)
+}
+
+func (b *msgpackBuffer) WriteMpStringHead(l int) {
 	switch {
 	case l < 32:
-		buf.WriteByte(mpStr | byte(l))
+		b.WriteByte(mpStr | byte(l))
 	case l < 256:
-		buf.WriteByte(mpStr8)
-		binary.Write(buf, binary.BigEndian, uint8(l))
+		b.WriteByte(mpStr8)
+		b.WriteValue(uint8(l))
 	case l < 65536:
-		buf.WriteByte(mpStr16)
-		binary.Write(buf, binary.BigEndian, uint16(l))
+		b.WriteByte(mpStr16)
+		b.WriteValue(uint16(l))
 	default:
-		buf.WriteByte(mpStr32)
-		binary.Write(buf, binary.BigEndian, uint32(l))
+		b.WriteByte(mpStr32)
+		b.WriteValue(uint32(l))
 	}
 }
 
-func writeMpBytesHead(buf *bytes.Buffer, l int) {
+func (b *msgpackBuffer) WriteMpBytesHead(l int) {
 	switch {
 	case l < 256:
-		buf.WriteByte(mpBytes8)
-		binary.Write(buf, binary.BigEndian, uint8(l))
+		b.WriteByte(mpBytes8)
+		b.WriteValue(uint8(l))
 	case l < 65536:
-		buf.WriteByte(mpBytes16)
-		binary.Write(buf, binary.BigEndian, uint16(l))
+		b.WriteByte(mpBytes16)
+		b.WriteValue(uint16(l))
 	default:
-		buf.WriteByte(mpBytes32)
-		binary.Write(buf, binary.BigEndian, uint32(l))
+		b.WriteByte(mpBytes32)
+		b.WriteValue(uint32(l))
 	}
 }
 
-func toMsgpackRecord(ts int64, key string, value []byte) []byte {
-	buf := new(bytes.Buffer)
+func toMsgpackTinyMessage(ts int64, key string, value []byte) []byte {
+	b := new(msgpackBuffer)
 	// 2 elments array [ts, {key: value}]
-	buf.WriteByte(mp2ElmArray)
+	b.WriteByte(mp2ElmArray)
 	// ts
-	buf.WriteByte(mpInt64)
-	binary.Write(buf, binary.BigEndian, ts)
+	b.WriteByte(mpInt64)
+	b.WriteValue(ts)
 	// 1 element map {key: value}
-	buf.WriteByte(mp1ElmMap)
+	b.WriteByte(mp1ElmMap)
 	// key
-	writeMpStringHead(buf, len(key))
-	buf.WriteString(key)
+	b.WriteMpStringHead(len(key))
+	b.WriteString(key)
 	// value
-	writeMpStringHead(buf, len(value))
-	buf.Write(value)
-	return buf.Bytes()
+	b.WriteMpStringHead(len(value))
+	b.Write(value)
+	return b.Bytes()
 }
 
 func toMsgpackRecordSet(tag string, bin *[]byte) []byte {
-	buf := new(bytes.Buffer)
+	b := new(msgpackBuffer)
 	// 2 elments array [ts, bin]
-	buf.WriteByte(mp2ElmArray)
+	b.WriteByte(mp2ElmArray)
 	// tag
-	writeMpStringHead(buf, len(tag))
-	buf.WriteString(tag)
+	b.WriteMpStringHead(len(tag))
+	b.WriteString(tag)
 	// buf
-	writeMpBytesHead(buf, len(*bin))
-	buf.Write(*bin)
-	return buf.Bytes()
+	b.WriteMpBytesHead(len(*bin))
+	b.Write(*bin)
+	return b.Bytes()
 }
