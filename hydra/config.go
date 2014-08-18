@@ -15,12 +15,12 @@ const (
 )
 
 type Config struct {
-	TagPrefix      string
-	FieldName      string
-	Servers        []*ConfigServer
-	Logs           []*ConfigLogfile
-	Receiver       *ConfigReceiver
-	Monitor        *ConfigMonitor
+	TagPrefix string
+	FieldName string
+	Servers   []*ConfigServer
+	Logs      []*ConfigLogfile
+	Receiver  *ConfigReceiver
+	Monitor   *ConfigMonitor
 }
 
 type ConfigServer struct {
@@ -41,8 +41,8 @@ type ConfigReceiver struct {
 }
 
 type ConfigMonitor struct {
-	Host              string
-	Port              int
+	Host string
+	Port int
 }
 
 func ReadConfig(filename string) (*Config, error) {
@@ -84,9 +84,9 @@ func NewConfigByArgs(args []string, fieldName string, monitorAddr string) *Confi
 	}
 
 	config := &Config{
-		FieldName:      fieldName,
-		Servers:        configServers,
-		Logs:           configLogfiles,
+		FieldName: fieldName,
+		Servers:   configServers,
+		Logs:      configLogfiles,
 	}
 
 	if monitorAddr != "" {
@@ -142,7 +142,6 @@ func (cr *ConfigMonitor) Restrict(c *Config) {
 		cr.Host = DefaultMonitorHost
 	}
 }
-
 
 func (c *Config) Restrict() {
 	if c.FieldName == "" {
