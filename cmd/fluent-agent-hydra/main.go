@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"runtime"
 	"runtime/pprof"
 	"syscall"
 )
@@ -124,6 +125,9 @@ func run(config *hydra.Config) {
 
 	// start in_forward
 	if config.Receiver != nil {
+		if runtime.GOMAXPROCS(0) < 2 {
+			log.Println("[warning] When using Receiver, recommend to set GOMAXPROCS >= 2.")
+		}
 		inForward, err := hydra.NewInForward(config.Receiver, messageCh, monitorCh)
 		if err != nil {
 			log.Println("[error]", err)
