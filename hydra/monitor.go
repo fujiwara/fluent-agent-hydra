@@ -55,6 +55,7 @@ type ReceiverStat struct {
 	Messages           int64  `json:"messages"`
 	Disposed           int64  `json:"disposed"`
 	Buffered           int64  `json:"buffered"`
+	MaxBufferMessages  int64  `json:"max_buffer_messages"`
 }
 
 func (s *FileStat) ApplyTo(ss *Stats) {

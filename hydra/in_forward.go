@@ -38,7 +38,8 @@ func NewInForward(config *ConfigReceiver, messageCh chan *fluent.FluentRecordSet
 		messageQueue: NewMessageQueue(config.MaxBufferMessages),
 	}
 	monitorCh <- &ReceiverStat{
-		Address: f.Addr.String(),
+		Address:           f.Addr.String(),
+		MaxBufferMessages: int64(config.MaxBufferMessages),
 	}
 	return f, nil
 }
