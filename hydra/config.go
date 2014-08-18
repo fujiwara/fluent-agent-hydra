@@ -20,7 +20,7 @@ type Config struct {
 	Servers        []*ConfigServer
 	Logs           []*ConfigLogfile
 	Receiver       *ConfigReceiver
-	MonitorAddress string
+	Monitor        *ConfigMonitor
 }
 
 type ConfigServer struct {
@@ -38,6 +38,11 @@ type ConfigReceiver struct {
 	Host              string
 	Port              int
 	MaxBufferMessages int
+}
+
+type ConfigMonitor struct {
+	Host              string
+	Port              int
 }
 
 func ReadConfig(filename string) (*Config, error) {
@@ -77,12 +82,26 @@ func NewConfigByArgs(args []string, fieldName string, monitorAddr string) *Confi
 			Port: port,
 		}
 	}
+
 	config := &Config{
 		FieldName:      fieldName,
 		Servers:        configServers,
 		Logs:           configLogfiles,
-		MonitorAddress: monitorAddr,
 	}
+
+	if monitorAddr != "" {
+		host, _port, err := net.SplitHostPort(monitorAddr)
+		if err != nil {
+			log.Println("[error] invalid monitor address", monitorAddr, "disabled.")
+		} else {
+			port, _ := strconv.Atoi(_port)
+			config.Monitor = &ConfigMonitor{
+				Host: host,
+				Port: port,
+			}
+		}
+	}
+
 	config.Restrict()
 	return config
 }
@@ -117,6 +136,13 @@ func (cl *ConfigLogfile) Restrict(c *Config) {
 		cl.Tag = c.TagPrefix + "." + cl.Tag
 	}
 }
+
+func (cr *ConfigMonitor) Restrict(c *Config) {
+	if cr.Host == "" {
+		cr.Host = DefaultMonitorHost
+	}
+}
+
 
 func (c *Config) Restrict() {
 	if c.FieldName == "" {

@@ -40,4 +40,8 @@ func TestReadConfig(t *testing.T) {
 	if config.Receiver.Host != "localhost" || config.Receiver.Port != 24224 {
 		t.Errorf("invalid Receiver got %#v", config.Receiver)
 	}
+
+	if config.Monitor.Host != "127.0.0.2" || config.Monitor.Port != 24223 {
+		t.Errorf("invalid Monitor got %#v", config.Monitor)
+	}
 }

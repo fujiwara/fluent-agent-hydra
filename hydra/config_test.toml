@@ -19,3 +19,7 @@ File = "/tmp/foo.log"
 Tag  = "tag2"
 File = "/tmp/bar.log"
 FieldName = "msg"
+
+[Monitor]
+Host = "127.0.0.2"
+Port = 24223

@@ -10,6 +10,11 @@ import (
 	"time"
 )
 
+const (
+	DefaultMonitorPort = 24223
+	DefaultMonitorHost = "localhost"
+)
+
 type Stats struct {
 	Sent     map[string]*SentStat `json:"sent"`
 	Files    map[string]*FileStat `json:"files"`
@@ -124,13 +129,13 @@ func NewMonitor(config *Config, monitorCh chan Stat) (*Monitor, error) {
 	go stats.Run(monitorCh)
 	monitor := &Monitor{
 		stats:     stats,
-		address:   config.MonitorAddress,
 		monitorCh: monitorCh,
 	}
-	if monitor.address == "" {
+	if config.Monitor == nil {
 		return monitor, nil
 	}
-	listener, err := net.Listen("tcp", monitor.address)
+	monitorAddress := fmt.Sprintf("%s:%d", config.Monitor.Host, config.Monitor.Port)
+	listener, err := net.Listen("tcp", monitorAddress)
 	if err != nil {
 		log.Println("[error]", err)
 		return nil, err

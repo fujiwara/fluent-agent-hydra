@@ -15,7 +15,10 @@ import (
 
 func TestMonitorServer(t *testing.T) {
 	config := &hydra.Config{
-		MonitorAddress: ":0",
+		Monitor: &hydra.ConfigMonitor{
+			Host: "localhost",
+			Port: 0,
+		},
 	}
 	_, ch := hydra.NewChannel()
 	monitor, _ := hydra.NewMonitor(config, ch)
