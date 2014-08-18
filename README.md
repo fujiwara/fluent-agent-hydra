@@ -9,13 +9,13 @@ This agent is inspired by [fluent-agent-lite](https://github.com/tagomoris/fluen
 ## Features
 
 - Tailing log files (like in_tail)
--- enable to handle multiple files in a single process.
+  - enable to handle multiple files in a single process.
 - Forwarding messages to external fluentd (like out_forward)
--- multiple fluentd server can be used. When primary server is down, messages will sent to secondary server.
+  - multiple fluentd server can be used. When primary server is down, messages will sent to secondary server.
 - Receiving a fluentd's forward protocol messages via TCP (like in_forward)
--- includes simplified on-memory queue.
+  - includes simplified on-memory queue.
 - Stats monitor httpd server
--- serve an agent stats by JSON format.
+  - serve an agent stats by JSON format.
 
 ## Installation
 
@@ -56,18 +56,18 @@ fluent-agent-hydra -c /path/to/config.toml
 A example of config.toml
 
 ```toml
-TagPrefix = "foo"     # "foo.tag1", "foo.tag2"
-FieldName = "message" # default
+# global settings
+TagPrefix = "nginx"     # "nginx.access", "nginx.error"
+FieldName = "message"   # default "message"
 
 # tailing log file (in_tail)
 [[Logs]]
-Tag  = "tag1"
-File = "/path/to/foo.log"
+File = "/var/log/nginx/access.log"
+Tag = "access"
 
 [[Logs]]
-Tag  = "tag2"
-File = "/path/to/bar.log"
-FieldName = "msg"
+File = "/var/log/nginx/error.log"
+Tag = "error"
 
 # forwarding fluentd server (out_forward)
 [[Servers]]
@@ -76,16 +76,15 @@ Port = 24224
 
 [[Servers]]
 Host = "fluentd-backup.example.com"
-Port = 24225
+Port = 24224
 
 # receive fluentd forward protocol daemon (in_forward)
 [Receiver]
-Host = "127.0.0.1"
-Port = 2422
+Port = 24224
 
 # stats monitor http daemon
 [Monitor]
-Host = "127.0.0.1"
+Host = "localhost"
 Port = 24223
 ```
 
@@ -101,6 +100,7 @@ example response.
     "buffered": 0,
     "disposed": 0,
     "messages": 123,
+    "max_buffer_messages": 1048576,
     "current_connections": 1,
     "total_connections": 10,
     "address": "[::]:24224"
@@ -109,12 +109,12 @@ example response.
     {
       "error": "",
       "alive": true,
-      "address": "192.168.1.11:24224"
+      "address": "fluentd.example.com:24224"
     },
     {
-      "error": "[2014-08-18 18:15:19.121265262 +0900 JST] dial tcp 192.168.1.12:24224: i/o timeout",
+      "error": "[2014-08-18 18:25:28.965066394 +0900 JST] dial tcp 192.168.1.11:24224: connection refused",
       "alive": false,
-      "address": "192.168.1.12:24224"
+      "address": "fluentd-backup.example.com:24224"
     }
   ],
   "files": {
@@ -131,12 +131,12 @@ example response.
   },
   "sent": {
     "nginx.error": {
-      "bytes": 1050,
-      "messages": 5
+      "bytes": 2578,
+      "messages": 8
     },
     "nginx.access": {
-      "bytes": 19480,
-      "messages": 48
+      "bytes": 44996,
+      "messages": 109
     }
   }
 }
