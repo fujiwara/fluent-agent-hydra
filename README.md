@@ -57,8 +57,9 @@ A example of config.toml
 
 ```toml
 # global settings
-TagPrefix = "nginx"     # "nginx.access", "nginx.error"
-FieldName = "message"   # default "message"
+TagPrefix = "nginx"       # "nginx.access", "nginx.error"
+FieldName = "message"     # default "message"
+ReadBufferSize = 1048576  # default 64KB.
 
 # tailing log file (in_tail)
 [[Logs]]
@@ -146,31 +147,32 @@ example response.
 
 * AWS EC2 c3.2xlarge
   * Amazon Linux AMI release 2014.03
-  * Linux 3.10.48-55.140.amzn1.x86_64 #1 SMP Wed Jul 9 23:32:19 UTC 2014 x86_64 x86_64 x86_64 GNU/Linux
+  * Linux 3.10.48-55.140.amzn1.x86\_64 #1 SMP Wed Jul 9 23:32:19 UTC 2014 x86\_64 x86\_64 x86\_64 GNU/Linux
 * fluentd 0.10.52
   * ruby 2.1.2p95 (2014-05-08 revision 45877) [x86_64-linux]
 * fluent-agent-lite 1.0
   * perl This is perl 5, version 16, subversion 3 (v5.16.3) built for x86_64-linux-thread-multi
-* fluent-agent-hydra v0.0.2
-  * go version go1.3 linux/amd64
+* fluent-agent-hydra v0.0.5
+  * go version go1.3.1 linux/amd64
 
 Benchmark set [fluentd-benchmark/one_forward](https://github.com/fluent/fluentd-benchmark/tree/master/one_forward)
 
-| logs/sec   | fluentd CPU |         RSS | lite CPU |      RSS | hydra CPU |       RSS | hydra CPU(GOMAXPROCS=2) | RSS  |
-|-----------:|------------:|------------:|---------:|---------:|----------:|----------:|------------------------:|-----:|
-|        100 |        0.65 |       40152 |     0.18 |     8424 |      0.72 |     10876 |                    1.2 |  10872 |  
-|       1000 |        1.7  |       51836 |     0.34 |     8420 |       1.0 |     18460 |                    1.5 |  18188 |
-|       5000 |        5.5  |       87316 |      1.0 |     9280 |       2.2 |     20804 |                    3.1 |  25668 |
-|      10000 |         11  |       85468 |      2.0 |     9812 |       3.8 |     26252 |                    5.7 |  30468 |
-|      50000 |         48  |      132496 |      8.9 |    15216 |        16 |     55772 |                     21 |  54860 |
-|     100000 |        107  |      636892 |       18 |    20948 |        30 |     75932 |                     42 |  66920 |
-|     250000 |          -  |           - |       45 |    21048 |        65 |     67372 |                    113 |  90420 |
-|     500000 |          -  |           - |       87 |    21092 |        98 |     80208 |                    160 | 108032 |
-|     700000 |          -  |           - |       -  |       -  |         - |         - |                    165 | 106796 |
+| lines/sec  | fluentd CPU |         RSS | lite CPU |      RSS | hydra(1) CPU |    RSS | hydra(2) CPU | RSS  |
+|-----------:|------------:|------------:|---------:|---------:|----------:|----------:|-------------:|-----:|
+|        100 |        0.65 |       40152 |     0.18 |     8424 |      0.30 |      5400 |         0.78 |  5244 |
+|       1000 |        1.7  |       51836 |     0.34 |     8420 |      0.68 |      5872 |          1.2 |  6212 |
+|       5000 |        5.5  |       87316 |      1.0 |     9280 |       1.8 |      7728 |          2.8 |  9804 |
+|      10000 |         11  |       85468 |      2.0 |     9812 |       3.4 |      9796 |          5.1 | 10560 |
+|      50000 |         48  |      132496 |      8.9 |    15216 |        15 |     10840 |           24 | 11728 |
+|     100000 |        107  |      636892 |       18 |    20948 |        31 |     11092 |           48 | 13284 |
+|     250000 |          -  |           - |       45 |    21048 |        71 |     15748 |          115 | 20076 |
+|     500000 |          -  |           - |       87 |    21092 |     87(a) |  65788(a) |          173 | 30344 |
+|     700000 |          -  |           - |       -  |       -  |         - |         - |       165(b) | 81756(b) |
 
-* fluent-agent-lite max:  580000/sec
-* fluent-agent-hydra max: 580000/sec
-* fluent-agetn-hydra(GOMAXPROCS=2) max: 700000/sec
+* fluent-agent-lite max:  580,000/sec
+* fluent-agent-hydra(GOMAXPROCS=1) max: 460,000/sec
+* fluent-agent-hydra(GOMAXPROCS=1, ReadBufferSize=1,000,000) max: 550,000/sec (a)
+* fluent-agetn-hydra(GOMAXPROCS=2, ReadBufferSize=1,000,000) max: 700,000/sec (b)
 
 ## Thanks to
 
