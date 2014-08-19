@@ -26,13 +26,24 @@ func (b *msgpackBuffer) WriteValue(v interface{}) {
 	binary.Write(b, binary.BigEndian, v)
 }
 
-func (b *msgpackBuffer) WriteMpStringHead(l int) {
+func (b *msgpackBuffer) WriteMpStringHeadShort(l int) {
 	switch {
 	case l < 32:
 		b.WriteByte(mpStr | byte(l))
 	case l < 256:
 		b.WriteByte(mpStr8)
 		b.WriteValue(uint8(l))
+	case l < 65536:
+		b.WriteByte(mpStr16)
+		b.WriteValue(uint16(l))
+	default:
+		b.WriteByte(mpStr32)
+		b.WriteValue(uint32(l))
+	}
+}
+
+func (b *msgpackBuffer) WriteMpStringHead(l int) {
+	switch {
 	case l < 65536:
 		b.WriteByte(mpStr16)
 		b.WriteValue(uint16(l))
@@ -82,7 +93,7 @@ func toMsgpackRecordSet(tag string, bin *[]byte) []byte {
 	b.WriteMpStringHead(len(tag))
 	b.WriteString(tag)
 	// buf
-	b.WriteMpBytesHead(len(*bin))
+	b.WriteMpStringHead(len(*bin))
 	b.Write(*bin)
 	return b.Bytes()
 }
