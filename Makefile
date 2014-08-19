@@ -15,4 +15,4 @@ get-deps:
 	go get github.com/t-k/fluent-logger-golang/fluent
 
 binary:
-	cd cmd/fluent-agent-hydra && gox -os="linux darwin" -arch="amd64 i386" -output "../../pkg/{{.OS}}_{{.Arch}}/{{.Dir}}" -ldflags "-X main.version ${GIT_VER} -X main.buildDate ${DATE}"
+	cd cmd/fluent-agent-hydra && gox -os="linux darwin windows" -arch="amd64 386" -output "../../pkg/{{.OS}}_{{.Arch}}/{{.Dir}}" -ldflags "-X main.version ${GIT_VER} -X main.buildDate ${DATE}"
