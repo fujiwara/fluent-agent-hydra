@@ -140,8 +140,11 @@ func decodeRecordSet(tag []byte, entries []interface{}) (FluentRecordSet, error)
 		if !ok {
 			return FluentRecordSet{}, errors.New("Failed to decode recordSet")
 		}
-		timestamp, ok := entry[0].(int64)
-		if !ok {
+		var timestamp int64
+		switch entry[0].(type) {
+		case int64, uint64, int32, uint32, float32, float64:
+			timestamp, _ = entry[0].(int64)
+		default:
 			return FluentRecordSet{}, errors.New("Failed to decode timestamp field")
 		}
 		data, ok := entry[1].(map[string]interface{})
@@ -176,30 +179,13 @@ func DecodeEntries(conn net.Conn) ([]FluentRecordSet, error) {
 
 	var retval []FluentRecordSet
 	switch timestamp_or_entries := v[1].(type) {
-	case int64, uint64, int32, uint32:
+	case int64, uint64, int32, uint32, float32, float64:
 		timestamp, _ := timestamp_or_entries.(int64)
 		data, ok := v[2].(map[string]interface{})
 		if !ok {
 			return nil, errors.New("Failed to decode data field")
 		}
 		coerceInPlace(data)
-		retval = []FluentRecordSet{
-			{
-				Tag: string(tag), // XXX: byte => rune
-				Records: []FluentRecordType{
-					&TinyFluentRecord{
-						Timestamp: timestamp,
-						Data:      data,
-					},
-				},
-			},
-		}
-	case float64:
-		timestamp := int64(timestamp_or_entries)
-		data, ok := v[2].(map[string]interface{})
-		if !ok {
-			return nil, errors.New("Failed to decode data field")
-		}
 		retval = []FluentRecordSet{
 			{
 				Tag: string(tag), // XXX: byte => rune
