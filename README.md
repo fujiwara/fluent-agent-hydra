@@ -19,6 +19,10 @@ This agent is inspired by [fluent-agent-lite](https://github.com/tagomoris/fluen
 
 ## Installation
 
+[Binary releases](https://github.com/fujiwara/fluent-agent-hydra/releases)
+
+or
+
 ```
 go get github.com/fujiwara/fluent-agent-hydra/cmd/fluent-agent-hydra/
 ```
