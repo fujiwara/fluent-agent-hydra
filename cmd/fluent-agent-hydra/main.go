@@ -90,6 +90,11 @@ func usage() {
 func run(config *hydra.Config) {
 	messageCh, monitorCh := hydra.NewChannel()
 
+	if config.ReadBufferSize > 0 {
+		hydra.ReadBufferSize = config.ReadBufferSize
+		log.Println("[info] set ReadBufferSize", hydra.ReadBufferSize)
+	}
+
 	// start monitor server
 	monitor, err := hydra.NewMonitor(config, monitorCh)
 	if err != nil {

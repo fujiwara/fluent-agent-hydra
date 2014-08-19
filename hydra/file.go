@@ -17,7 +17,7 @@ const (
 )
 
 var (
-	ReadBufferSize = 1024 * 1024
+	ReadBufferSize = 64 * 1024
 )
 
 type File struct {
@@ -100,7 +100,7 @@ func (f *File) restrict() error {
 func (f *File) tailAndSend(messageCh chan *fluent.FluentRecordSet, monitorCh chan Stat) error {
 	for {
 		readBuf := make([]byte, ReadBufferSize)
-		sendBuf := make([]byte, 0, ReadBufferSize*2)
+		sendBuf := make([]byte, 0)
 		n, err := io.ReadAtLeast(f, readBuf, 1)
 		if n == 0 {
 			return err

@@ -1,4 +1,5 @@
 TagPrefix = "foo"    # comment
+ReadBufferSize = 1024
 
 [Receiver]
 Host = "localhost"

@@ -18,6 +18,9 @@ func TestReadConfig(t *testing.T) {
 	if config.FieldName != "message" {
 		t.Error("invalid FieldName got", config.FieldName, "expected", "msg")
 	}
+	if config.ReadBufferSize != 1024 {
+		t.Error("invalid ReadBufferSize got", config.ReadBufferSize)
+	}
 	if len(config.Servers) != 2 {
 		t.Errorf("invalid Servers got %#v", config.Servers)
 	}
