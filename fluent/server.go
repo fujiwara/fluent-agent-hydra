@@ -137,9 +137,10 @@ func decodeRecordSet(tag []byte, entries []interface{}) (FluentRecordSet, error)
 	records := make([]FluentRecordType, len(entries))
 	for i, _entry := range entries {
 		entry, ok := _entry.([]interface{})
-		if !ok {
+		if !ok || len(entry) != 2 {
 			return FluentRecordSet{}, errors.New("Failed to decode recordSet")
 		}
+		// timestamp
 		var timestamp int64
 		switch entry[0].(type) {
 		case int64, uint64, int32, uint32, float32, float64:
@@ -147,6 +148,7 @@ func decodeRecordSet(tag []byte, entries []interface{}) (FluentRecordSet, error)
 		default:
 			return FluentRecordSet{}, errors.New("Failed to decode timestamp field")
 		}
+		// data
 		data, ok := entry[1].(map[string]interface{})
 		if !ok {
 			return FluentRecordSet{}, errors.New("Failed to decode data field")
