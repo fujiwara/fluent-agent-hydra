@@ -127,7 +127,6 @@ func (f *File) tailAndSend(messageCh chan *fluent.FluentRecordSet, monitorCh cha
 		messageCh <- NewFluentRecordSet(f.Tag, f.FieldName, &sendBuf)
 		monitorCh <- f.NewStat()
 	}
-	return nil
 }
 
 func (f *File) NewStat() *FileStat {
