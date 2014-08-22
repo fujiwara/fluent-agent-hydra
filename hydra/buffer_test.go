@@ -44,7 +44,7 @@ func TestMessageQueue(t *testing.T) {
 		t.Errorf("invalud queue.Len() %d", queue.Len())
 	}
 	if d != 1 {
-		t.Errorf("invalid disposed", d)
+		t.Errorf("invalid disposed %d", d)
 	}
 
 	// [2 3 4 5 6 7 8 9 10 1] + 10 => disposed=[2 3 4 5]
@@ -53,7 +53,7 @@ func TestMessageQueue(t *testing.T) {
 		t.Errorf("invalud queue.Len() %d", queue.Len())
 	}
 	if d != 14 {
-		t.Errorf("invalid disposed", d)
+		t.Errorf("invalid disposed %d", d)
 	}
 
 	// [6 7 8 9 10 1 10] => [7 8 9 10 1 10]
