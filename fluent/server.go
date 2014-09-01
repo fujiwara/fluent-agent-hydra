@@ -94,7 +94,7 @@ type FluentRecordSet struct {
 }
 
 func (rs *FluentRecordSet) PackAsPackedForward() ([]byte, error) {
-	buffer := make([]byte, 0, len(rs.Records)*1024)
+	buffer := make([]byte, 0)
 	for _, record := range rs.Records {
 		data, err := record.Pack()
 		if err != nil {
@@ -102,7 +102,7 @@ func (rs *FluentRecordSet) PackAsPackedForward() ([]byte, error) {
 		}
 		buffer = append(buffer, data...)
 	}
-	return toMsgpackRecordSet(rs.Tag, &buffer), nil
+	return toMsgpackRecordSet(rs.Tag, buffer), nil
 }
 
 func (rs *FluentRecordSet) PackAsForward() ([]byte, error) {

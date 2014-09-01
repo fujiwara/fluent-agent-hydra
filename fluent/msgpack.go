@@ -85,7 +85,7 @@ func toMsgpackTinyMessage(ts int64, key string, value []byte) []byte {
 	return b.Bytes()
 }
 
-func toMsgpackRecordSet(tag string, bin *[]byte) []byte {
+func toMsgpackRecordSet(tag string, bin []byte) []byte {
 	b := new(msgpackBuffer)
 	// 2 elments array [ts, bin]
 	b.WriteByte(mp2ElmArray)
@@ -93,7 +93,7 @@ func toMsgpackRecordSet(tag string, bin *[]byte) []byte {
 	b.WriteMpStringHead(len(tag))
 	b.WriteString(tag)
 	// buf
-	b.WriteMpStringHead(len(*bin))
-	b.Write(*bin)
+	b.WriteMpStringHead(len(bin))
+	b.Write(bin)
 	return b.Bytes()
 }
