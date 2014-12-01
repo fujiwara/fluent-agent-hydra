@@ -35,6 +35,7 @@ func main() {
 	flag.BoolVar(&help, "help", false, "show help message")
 	flag.StringVar(&fieldName, "f", hydra.DefaultFieldName, "fieldname of fluentd log message attribute (DEFAULT: message)")
 	flag.StringVar(&monitorAddr, "monitor", "", "monitor HTTP server address")
+	flag.StringVar(&monitorAddr, "m", "", "monitor HTTP server address")
 	flag.BoolVar(&showVersion, "v", false, "show version")
 	flag.BoolVar(&showVersion, "version", false, "show version")
 	flag.Parse()
