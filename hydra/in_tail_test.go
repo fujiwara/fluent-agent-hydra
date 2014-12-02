@@ -6,7 +6,6 @@ import (
 	"github.com/fujiwara/fluent-agent-hydra/hydra"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"os"
 	"strings"
 	"testing"
@@ -103,7 +102,7 @@ func fileWriter(t *testing.T, file *os.File, logs []string) {
 		if err != nil {
 			log.Println("write failed", err)
 		}
-		randSleep()
+		time.Sleep(100 * time.Millisecond)
 	}
 	file.Close()
 }
@@ -128,8 +127,4 @@ func reciever(t *testing.T, ch chan *fluent.FluentRecordSet, tag string, resultC
 			}
 		}
 	}
-}
-
-func randSleep() {
-	time.Sleep(time.Duration(rand.Int63n(int64(100))) * time.Millisecond)
 }
