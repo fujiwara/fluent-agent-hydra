@@ -95,9 +95,11 @@ Port = 24223
 
 ## Stats monitor
 
-`curl -s [Monitor.Host]:[Monitor.Port] | jq .`
+### Hydra application stats
 
-example response.
+`curl -s [Monitor.Host]:[Monitor.Port]/ | jq .`
+
+An example response.
 
 ```json
 {
@@ -144,6 +146,47 @@ example response.
       "messages": 109
     }
   }
+}
+```
+
+### system stats
+
+`curl -s [Monitor.Host]:[Monitor.Port]/stats | jq .`
+
+An example response.
+
+```json
+{
+  "time": 1417748153556699400,
+  "go_version": "go1.3",
+  "go_os": "darwin",
+  "go_arch": "amd64",
+  "cpu_num": 4,
+  "goroutine_num": 17,
+  "gomaxprocs": 1,
+  "cgo_call_num": 48,
+  "memory_alloc": 551840,
+  "memory_total_alloc": 17886960,
+  "memory_sys": 5310712,
+  "memory_lookups": 321,
+  "memory_mallocs": 4645,
+  "memory_frees": 3622,
+  "memory_stack": 131072,
+  "heap_alloc": 551840,
+  "heap_sys": 2097152,
+  "heap_idle": 1253376,
+  "heap_inuse": 843776,
+  "heap_released": 0,
+  "heap_objects": 1023,
+  "gc_next": 1083088,
+  "gc_last": 1417748153454501600,
+  "gc_num": 34,
+  "gc_per_second": 0.966939666110773,
+  "gc_pause_per_second": 0.641048,
+  "gc_pause": [
+    0.2991,
+    0.341948
+  ]
 }
 ```
 

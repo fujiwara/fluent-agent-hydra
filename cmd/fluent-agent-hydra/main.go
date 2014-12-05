@@ -3,13 +3,14 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/fujiwara/fluent-agent-hydra/hydra"
 	"log"
 	"os"
 	"os/signal"
 	"runtime"
 	"runtime/pprof"
 	"syscall"
+
+	"github.com/fujiwara/fluent-agent-hydra/hydra"
 )
 
 var (
