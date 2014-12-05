@@ -156,7 +156,7 @@ func (m *Monitor) Run() {
 		w.Header().Set("Content-Type", "application/json")
 		m.stats.WriteJSON(w)
 	})
-	http.HandleFunc("/stats", stats_api.Handler)
+	http.HandleFunc("/system", stats_api.Handler)
 
 	go http.Serve(m.listener, nil)
 	log.Printf("[info] Monitor server listening http://%s/\n", m.listener.Addr())

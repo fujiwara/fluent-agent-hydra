@@ -95,6 +95,8 @@ Port = 24223
 
 ## Stats monitor
 
+For enabling stats monitor, specify command line option `-m host:port` or `[Monitor]` section in config file.
+
 ### Hydra application stats
 
 `curl -s [Monitor.Host]:[Monitor.Port]/ | jq .`
@@ -151,7 +153,7 @@ An example response.
 
 ### system stats
 
-`curl -s [Monitor.Host]:[Monitor.Port]/stats | jq .`
+`curl -s [Monitor.Host]:[Monitor.Port]/system | jq .`
 
 An example response.
 
