@@ -126,7 +126,6 @@ func (f *File) tailAndSend(messageCh chan *fluent.FluentRecordSet, monitorCh cha
 					sendBuf = append(sendBuf, f.contBuf...)
 					f.contBuf = make([]byte, n-blockLen-1)
 					copy(f.contBuf, readBuf[blockLen+1:n])
-					log.Println("    newc", string(f.contBuf))
 				}
 				sendBuf = append(sendBuf, readBuf[0:blockLen]...)
 			}

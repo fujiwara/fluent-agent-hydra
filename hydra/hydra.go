@@ -2,8 +2,9 @@ package hydra
 
 import (
 	"bytes"
-	"github.com/fujiwara/fluent-agent-hydra/fluent"
 	"time"
+
+	"github.com/fujiwara/fluent-agent-hydra/fluent"
 )
 
 const (
@@ -32,11 +33,11 @@ func NewFluentRecordSet(tag string, key string, buffer *[]byte) *fluent.FluentRe
 	timestamp := time.Now().Unix()
 	messages := bytes.Split(*buffer, LineSeparator)
 	records := make([]fluent.FluentRecordType, len(messages))
-	for i, message := range messages {
+	for i, _ := range messages {
 		records[i] = &fluent.TinyFluentMessage{
 			Timestamp: timestamp,
 			FieldName: key,
-			Message:   message,
+			Message:   messages[i],
 		}
 	}
 	return &fluent.FluentRecordSet{
