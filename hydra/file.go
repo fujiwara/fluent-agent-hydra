@@ -2,11 +2,12 @@ package hydra
 
 import (
 	"bytes"
-	"github.com/fujiwara/fluent-agent-hydra/fluent"
 	"io"
 	"log"
 	"os"
 	"time"
+
+	"github.com/fujiwara/fluent-agent-hydra/fluent"
 )
 
 const (
@@ -98,8 +99,8 @@ func (f *File) restrict() error {
 }
 
 func (f *File) tailAndSend(messageCh chan *fluent.FluentRecordSet, monitorCh chan Stat) error {
+	readBuf := make([]byte, ReadBufferSize)
 	for {
-		readBuf := make([]byte, ReadBufferSize)
 		sendBuf := make([]byte, 0)
 		n, err := io.ReadAtLeast(f, readBuf, 1)
 		if n == 0 {
@@ -108,20 +109,26 @@ func (f *File) tailAndSend(messageCh chan *fluent.FluentRecordSet, monitorCh cha
 		f.Position += int64(n)
 		if readBuf[n-1] == '\n' {
 			// readBuf is just terminated by '\n'
-			sendBuf = append(sendBuf, f.contBuf...)
+			if len(f.contBuf) > 0 {
+				sendBuf = append(sendBuf, f.contBuf...)
+				f.contBuf = []byte{}
+			}
 			sendBuf = append(sendBuf, readBuf[0:n-1]...)
-			f.contBuf = []byte{}
 		} else {
-			blockLen := bytes.LastIndex(readBuf, LineSeparator)
+			blockLen := bytes.LastIndex(readBuf[0:n], LineSeparator)
 			if blockLen == -1 {
 				// whole of readBuf is continuous line
 				f.contBuf = append(f.contBuf, readBuf[0:n]...)
 				continue
 			} else {
 				// bottom line of readBuf is continuous line
-				sendBuf = append(sendBuf, f.contBuf...)
+				if len(f.contBuf) > 0 {
+					sendBuf = append(sendBuf, f.contBuf...)
+					f.contBuf = make([]byte, n-blockLen-1)
+					copy(f.contBuf, readBuf[blockLen+1:n])
+					log.Println("    newc", string(f.contBuf))
+				}
 				sendBuf = append(sendBuf, readBuf[0:blockLen]...)
-				f.contBuf = readBuf[blockLen+1 : n]
 			}
 		}
 		messageCh <- NewFluentRecordSet(f.Tag, f.FieldName, &sendBuf)

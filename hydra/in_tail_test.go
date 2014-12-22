@@ -2,14 +2,15 @@ package hydra_test
 
 import (
 	"fmt"
-	"github.com/fujiwara/fluent-agent-hydra/fluent"
-	"github.com/fujiwara/fluent-agent-hydra/hydra"
 	"io/ioutil"
 	"log"
 	"os"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/fujiwara/fluent-agent-hydra/fluent"
+	"github.com/fujiwara/fluent-agent-hydra/hydra"
 )
 
 var (
@@ -25,7 +26,7 @@ var (
 		"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n",  // 81 bytes
 		"ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\n", // 82byte
 		"dddddddddddddddddddddddddddddddddddddddd",
-		"ddddddddddddddddddddddddddddddddddddddd\n", // continuous line 80 bytes
+		"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\n", // continuous line 80 bytes
 		RotateMarker + "\n",
 		"foo\n",
 		"bar\n",
