@@ -29,9 +29,9 @@ func NewChannel() (chan *fluent.FluentRecordSet, chan Stat) {
 	return messageCh, monitorCh
 }
 
-func NewFluentRecordSet(tag string, key string, buffer *[]byte) *fluent.FluentRecordSet {
+func NewFluentRecordSet(tag string, key string, buffer []byte) *fluent.FluentRecordSet {
 	timestamp := time.Now().Unix()
-	messages := bytes.Split(*buffer, LineSeparator)
+	messages := bytes.Split(buffer, LineSeparator)
 	records := make([]fluent.FluentRecordType, len(messages))
 	for i, _ := range messages {
 		records[i] = &fluent.TinyFluentMessage{

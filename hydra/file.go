@@ -123,7 +123,7 @@ func (f *File) tailAndSend(messageCh chan *fluent.FluentRecordSet, monitorCh cha
 		if readBuf[n-1] == '\n' {
 			// readBuf is just terminated by '\n'
 			if len(f.contBuf) > 0 {
-				sendBuf := make([]byte, len(f.contBuf)+n)
+				sendBuf := make([]byte, 0)
 				sendBuf = append(sendBuf, f.contBuf...)
 				sendBuf = append(sendBuf, readBuf[0:n-1]...)
 				f.contBuf = make([]byte, 0)
@@ -139,16 +139,14 @@ func (f *File) tailAndSend(messageCh chan *fluent.FluentRecordSet, monitorCh cha
 				continue
 			} else {
 				// bottom line of readBuf is continuous line
+				sendBuf := make([]byte, 0)
 				if len(f.contBuf) > 0 {
-					sendBuf := make([]byte, 0)
 					sendBuf = append(sendBuf, f.contBuf...)
-					sendBuf = append(sendBuf, readBuf[0:blockLen]...)
-					messageCh <- NewFluentRecordSet(f.Tag, f.FieldName, sendBuf)
-				} else {
-					messageCh <- NewFluentRecordSet(f.Tag, f.FieldName, readBuf[0:blockLen])
 				}
+				sendBuf = append(sendBuf, readBuf[0:blockLen]...)
 				f.contBuf = make([]byte, n-blockLen-1)
 				copy(f.contBuf, readBuf[blockLen+1:n])
+				messageCh <- NewFluentRecordSet(f.Tag, f.FieldName, sendBuf)
 			}
 		}
 		monitorCh <- f.UpdateStat()
