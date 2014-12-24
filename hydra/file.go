@@ -26,9 +26,11 @@ type File struct {
 	Path      string
 	Tag       string
 	Position  int64
+	readBuf   []byte
 	contBuf   []byte
 	lastStat  os.FileInfo
 	FieldName string
+	FileStat  *FileStat
 }
 
 func newTrailFile(path string, tag string, fieldName string, startPos int64, monitorCh chan Stat) *File {
@@ -40,7 +42,7 @@ func newTrailFile(path string, tag string, fieldName string, startPos int64, mon
 			f.Tag = tag
 			f.FieldName = fieldName
 			log.Println("[info] Trailing file:", f.Path, "tag:", f.Tag)
-			monitorCh <- f.NewStat()
+			monitorCh <- f.UpdateStat()
 			return f
 		}
 		monitorCh <- &FileStat{
@@ -68,7 +70,17 @@ func openFile(path string, startPos int64) (*File, error) {
 		return nil, err
 	}
 
-	file := &File{f, path, "", startPos, make([]byte, 0), stat, ""}
+	file := &File{
+		f,
+		path,
+		"",
+		startPos,
+		make([]byte, ReadBufferSize),
+		make([]byte, 0),
+		stat,
+		"",
+		&FileStat{},
+	}
 
 	if startPos == SEEK_TAIL {
 		// seek to end of file
@@ -99,21 +111,26 @@ func (f *File) restrict() error {
 }
 
 func (f *File) tailAndSend(messageCh chan *fluent.FluentRecordSet, monitorCh chan Stat) error {
-	readBuf := make([]byte, ReadBufferSize)
+	readBuf := f.readBuf
 	for {
-		sendBuf := make([]byte, 0)
 		n, err := io.ReadAtLeast(f, readBuf, 1)
-		if n == 0 {
+		if n == 0 || err == io.EOF {
+			return err
+		} else if err != nil {
 			return err
 		}
 		f.Position += int64(n)
 		if readBuf[n-1] == '\n' {
 			// readBuf is just terminated by '\n'
 			if len(f.contBuf) > 0 {
+				sendBuf := make([]byte, len(f.contBuf)+n)
 				sendBuf = append(sendBuf, f.contBuf...)
-				f.contBuf = []byte{}
+				sendBuf = append(sendBuf, readBuf[0:n-1]...)
+				f.contBuf = make([]byte, 0)
+				messageCh <- NewFluentRecordSet(f.Tag, f.FieldName, sendBuf)
+			} else {
+				messageCh <- NewFluentRecordSet(f.Tag, f.FieldName, readBuf[0:n-1])
 			}
-			sendBuf = append(sendBuf, readBuf[0:n-1]...)
 		} else {
 			blockLen := bytes.LastIndex(readBuf[0:n], LineSeparator)
 			if blockLen == -1 {
@@ -123,22 +140,24 @@ func (f *File) tailAndSend(messageCh chan *fluent.FluentRecordSet, monitorCh cha
 			} else {
 				// bottom line of readBuf is continuous line
 				if len(f.contBuf) > 0 {
+					sendBuf := make([]byte, 0)
 					sendBuf = append(sendBuf, f.contBuf...)
-					f.contBuf = make([]byte, n-blockLen-1)
-					copy(f.contBuf, readBuf[blockLen+1:n])
+					sendBuf = append(sendBuf, readBuf[0:blockLen]...)
+					messageCh <- NewFluentRecordSet(f.Tag, f.FieldName, sendBuf)
+				} else {
+					messageCh <- NewFluentRecordSet(f.Tag, f.FieldName, readBuf[0:blockLen])
 				}
-				sendBuf = append(sendBuf, readBuf[0:blockLen]...)
+				f.contBuf = make([]byte, n-blockLen-1)
+				copy(f.contBuf, readBuf[blockLen+1:n])
 			}
 		}
-		messageCh <- NewFluentRecordSet(f.Tag, f.FieldName, &sendBuf)
-		monitorCh <- f.NewStat()
+		monitorCh <- f.UpdateStat()
 	}
 }
 
-func (f *File) NewStat() *FileStat {
-	return &FileStat{
-		File:     f.Path,
-		Position: f.Position,
-		Tag:      f.Tag,
-	}
+func (f *File) UpdateStat() *FileStat {
+	f.FileStat.File = f.Path
+	f.FileStat.Position = f.Position
+	f.FileStat.Tag = f.Tag
+	return f.FileStat
 }

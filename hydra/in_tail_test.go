@@ -103,7 +103,7 @@ func fileWriter(t *testing.T, file *os.File, logs []string) {
 		if err != nil {
 			log.Println("write failed", err)
 		}
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(1 * time.Millisecond)
 	}
 	file.Close()
 }
