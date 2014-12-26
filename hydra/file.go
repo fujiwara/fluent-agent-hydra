@@ -111,44 +111,39 @@ func (f *File) restrict() error {
 }
 
 func (f *File) tailAndSend(messageCh chan *fluent.FluentRecordSet, monitorCh chan Stat) error {
-	readBuf := f.readBuf
 	for {
-		n, err := io.ReadAtLeast(f, readBuf, 1)
+		n, err := io.ReadAtLeast(f, f.readBuf, 1)
 		if n == 0 || err == io.EOF {
 			return err
 		} else if err != nil {
 			return err
 		}
 		f.Position += int64(n)
-		if readBuf[n-1] == '\n' {
-			// readBuf is just terminated by '\n'
+		sendBuf := make([]byte, 0)
+		if f.readBuf[n-1] == '\n' {
+			// f.readBuf is just terminated by '\n'
 			if len(f.contBuf) > 0 {
-				sendBuf := make([]byte, 0)
 				sendBuf = append(sendBuf, f.contBuf...)
-				sendBuf = append(sendBuf, readBuf[0:n-1]...)
 				f.contBuf = make([]byte, 0)
-				messageCh <- NewFluentRecordSet(f.Tag, f.FieldName, sendBuf)
-			} else {
-				messageCh <- NewFluentRecordSet(f.Tag, f.FieldName, readBuf[0:n-1])
 			}
+			sendBuf = append(sendBuf, f.readBuf[0:n-1]...)
 		} else {
-			blockLen := bytes.LastIndex(readBuf[0:n], LineSeparator)
+			blockLen := bytes.LastIndex(f.readBuf[0:n], LineSeparator)
 			if blockLen == -1 {
-				// whole of readBuf is continuous line
-				f.contBuf = append(f.contBuf, readBuf[0:n]...)
+				// whole of f.readBuf is continuous line
+				f.contBuf = append(f.contBuf, f.readBuf[0:n]...)
 				continue
 			} else {
-				// bottom line of readBuf is continuous line
-				sendBuf := make([]byte, 0)
+				// bottom line of f.readBuf is continuous line
 				if len(f.contBuf) > 0 {
 					sendBuf = append(sendBuf, f.contBuf...)
 				}
-				sendBuf = append(sendBuf, readBuf[0:blockLen]...)
+				sendBuf = append(sendBuf, f.readBuf[0:blockLen]...)
 				f.contBuf = make([]byte, n-blockLen-1)
-				copy(f.contBuf, readBuf[blockLen+1:n])
-				messageCh <- NewFluentRecordSet(f.Tag, f.FieldName, sendBuf)
+				copy(f.contBuf, f.readBuf[blockLen+1:n])
 			}
 		}
+		messageCh <- NewFluentRecordSet(f.Tag, f.FieldName, sendBuf)
 		monitorCh <- f.UpdateStat()
 	}
 }
