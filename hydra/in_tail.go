@@ -2,13 +2,14 @@ package hydra
 
 import (
 	"errors"
-	"github.com/fujiwara/fluent-agent-hydra/fluent"
-	"github.com/howeyc/fsnotify"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/fujiwara/fluent-agent-hydra/fluent"
+	"github.com/howeyc/fsnotify"
 )
 
 const (
@@ -23,6 +24,7 @@ type InTail struct {
 	messageCh  chan *fluent.FluentRecordSet
 	monitorCh  chan Stat
 	eventCh    chan *fsnotify.FileEvent
+	format     FileFormat
 }
 
 type Watcher struct {
@@ -112,6 +114,7 @@ func NewInTail(config *ConfigLogfile, watcher *Watcher, messageCh chan *fluent.F
 		messageCh:  messageCh,
 		monitorCh:  monitorCh,
 		eventCh:    eventCh,
+		format:     config.Format,
 	}
 	return t, nil
 }
@@ -121,7 +124,7 @@ func (t *InTail) Run() {
 	defer log.Println("[error] Aborted to in_tail.run()")
 
 	log.Println("[info] Trying trail file", t.filename)
-	f := newTrailFile(t.filename, t.tag, t.fieldName, SEEK_TAIL, t.monitorCh)
+	f := newTrailFile(t.filename, t.tag, t.fieldName, SEEK_TAIL, t.monitorCh, t.format)
 	for {
 		for {
 			err := t.watchFileEvent(f)
@@ -131,7 +134,7 @@ func (t *InTail) Run() {
 			}
 		}
 		// re open file
-		f = newTrailFile(t.filename, t.tag, t.fieldName, SEEK_HEAD, t.monitorCh)
+		f = newTrailFile(t.filename, t.tag, t.fieldName, SEEK_HEAD, t.monitorCh, t.format)
 	}
 }
 

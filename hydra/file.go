@@ -31,9 +31,10 @@ type File struct {
 	lastStat  os.FileInfo
 	FieldName string
 	FileStat  *FileStat
+	Format    FileFormat
 }
 
-func newTrailFile(path string, tag string, fieldName string, startPos int64, monitorCh chan Stat) *File {
+func newTrailFile(path string, tag string, fieldName string, startPos int64, monitorCh chan Stat, format FileFormat) *File {
 	seekTo := startPos
 	first := true
 	for {
@@ -41,7 +42,8 @@ func newTrailFile(path string, tag string, fieldName string, startPos int64, mon
 		if err == nil {
 			f.Tag = tag
 			f.FieldName = fieldName
-			log.Println("[info] Trailing file:", f.Path, "tag:", f.Tag)
+			f.Format = format
+			log.Println("[info] Trailing file:", f.Path, "tag:", f.Tag, "format:", format)
 			monitorCh <- f.UpdateStat()
 			return f
 		}
@@ -80,6 +82,7 @@ func openFile(path string, startPos int64) (*File, error) {
 		stat,
 		"",
 		&FileStat{},
+		None,
 	}
 
 	if startPos == SEEK_TAIL {
@@ -143,7 +146,12 @@ func (f *File) tailAndSend(messageCh chan *fluent.FluentRecordSet, monitorCh cha
 				copy(f.contBuf, f.readBuf[blockLen+1:n])
 			}
 		}
-		messageCh <- NewFluentRecordSet(f.Tag, f.FieldName, sendBuf)
+		switch f.Format {
+		case LTSV:
+			messageCh <- NewFluentRecordSetLTSV(f.Tag, sendBuf)
+		default:
+			messageCh <- NewFluentRecordSet(f.Tag, f.FieldName, sendBuf)
+		}
 		monitorCh <- f.UpdateStat()
 	}
 }

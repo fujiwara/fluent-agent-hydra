@@ -2,10 +2,11 @@ package hydra
 
 import (
 	"fmt"
-	"github.com/BurntSushi/toml"
 	"log"
 	"net"
 	"strconv"
+
+	"github.com/BurntSushi/toml"
 )
 
 const (
@@ -33,6 +34,7 @@ type ConfigLogfile struct {
 	Tag       string
 	File      string
 	FieldName string
+	Format    FileFormat
 }
 
 type ConfigReceiver struct {
