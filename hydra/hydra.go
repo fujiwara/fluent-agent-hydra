@@ -2,6 +2,8 @@ package hydra
 
 import (
 	"bytes"
+	"encoding/json"
+	"log"
 	"strings"
 	"time"
 
@@ -67,6 +69,28 @@ func NewFluentRecordSetLTSV(tag string, buffer []byte) *fluent.FluentRecordSet {
 			Timestamp: timestamp,
 			Data:      data,
 		}
+	}
+	return &fluent.FluentRecordSet{
+		Tag:     tag,
+		Records: records,
+	}
+}
+
+func NewFluentRecordSetJSON(tag string, buffer []byte) *fluent.FluentRecordSet {
+	timestamp := time.Now().Unix()
+	lines := bytes.Split(buffer, LineSeparator)
+	records := make([]fluent.FluentRecordType, 0)
+	for _, line := range lines {
+		data := make(map[string]interface{})
+		err := json.Unmarshal(line, &data)
+		if err != nil {
+			log.Println("Decode json error", err, string(line))
+			continue
+		}
+		records = append(records, &fluent.TinyFluentRecord{
+			Timestamp: timestamp,
+			Data:      data,
+		})
 	}
 	return &fluent.FluentRecordSet{
 		Tag:     tag,

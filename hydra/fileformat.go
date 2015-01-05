@@ -1,19 +1,25 @@
 package hydra
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type FileFormat int
 
 const (
 	None FileFormat = iota
 	LTSV
+	JSON
 )
 
 func (f *FileFormat) UnmarshalText(text []byte) error {
-	switch string(text) {
-	case "LTSV", "ltsv":
+	switch strings.ToLower(string(text)) {
+	case "ltsv":
 		*f = LTSV
-	case "", "NONE", "None", "none":
+	case "json":
+		*f = JSON
+	case "", "none":
 		*f = None
 	default:
 		return fmt.Errorf("Invalid Format %s", string(text))

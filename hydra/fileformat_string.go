@@ -4,9 +4,9 @@ package hydra
 
 import "fmt"
 
-const _FileFormat_name = "NoneLTSV"
+const _FileFormat_name = "NoneLTSVJSON"
 
-var _FileFormat_index = [...]uint8{4, 8}
+var _FileFormat_index = [...]uint8{4, 8, 12}
 
 func (i FileFormat) String() string {
 	if i < 0 || i >= FileFormat(len(_FileFormat_index)) {
