@@ -21,6 +21,12 @@ Tag  = "tag2"
 File = "/tmp/bar.log"
 FieldName = "msg"
 
+[[Logs]]
+Tag = "ltsv"
+File = "/tmp/baz.log"
+Format = "ltsv"
+Types = "foo:string,id:integer"
+
 [Monitor]
 Host = "127.0.0.2"
 Port = 24223

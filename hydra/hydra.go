@@ -52,7 +52,7 @@ func NewFluentRecordSet(tag string, key string, buffer []byte) *fluent.FluentRec
 	}
 }
 
-func NewFluentRecordSetLTSV(tag string, buffer []byte) *fluent.FluentRecordSet {
+func NewFluentRecordSetLTSV(tag string, convertMap ConvertMap, buffer []byte) *fluent.FluentRecordSet {
 	timestamp := time.Now().Unix()
 	lines := strings.Split(string(buffer), LineSeparatorStr)
 	records := make([]fluent.FluentRecordType, len(lines))
@@ -64,6 +64,9 @@ func NewFluentRecordSetLTSV(tag string, buffer []byte) *fluent.FluentRecordSet {
 				continue
 			}
 			data[pair[0]] = pair[1]
+		}
+		if convertMap != nil {
+			ConvertTypes(data, convertMap)
 		}
 		records[i] = &fluent.TinyFluentRecord{
 			Timestamp: timestamp,

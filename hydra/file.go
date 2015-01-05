@@ -23,18 +23,19 @@ var (
 
 type File struct {
 	*os.File
-	Path      string
-	Tag       string
-	Position  int64
-	readBuf   []byte
-	contBuf   []byte
-	lastStat  os.FileInfo
-	FieldName string
-	FileStat  *FileStat
-	Format    FileFormat
+	Path       string
+	Tag        string
+	Position   int64
+	readBuf    []byte
+	contBuf    []byte
+	lastStat   os.FileInfo
+	FieldName  string
+	FileStat   *FileStat
+	Format     FileFormat
+	ConvertMap ConvertMap
 }
 
-func newTrailFile(path string, tag string, fieldName string, startPos int64, monitorCh chan Stat, format FileFormat) *File {
+func newTrailFile(path string, tag string, fieldName string, startPos int64, monitorCh chan Stat, format FileFormat, convertMap ConvertMap) *File {
 	seekTo := startPos
 	first := true
 	for {
@@ -43,6 +44,7 @@ func newTrailFile(path string, tag string, fieldName string, startPos int64, mon
 			f.Tag = tag
 			f.FieldName = fieldName
 			f.Format = format
+			f.ConvertMap = convertMap
 			log.Println("[info] Trailing file:", f.Path, "tag:", f.Tag, "format:", format)
 			monitorCh <- f.UpdateStat()
 			return f
@@ -83,6 +85,7 @@ func openFile(path string, startPos int64) (*File, error) {
 		"",
 		&FileStat{},
 		None,
+		nil,
 	}
 
 	if startPos == SEEK_TAIL {
@@ -148,7 +151,7 @@ func (f *File) tailAndSend(messageCh chan *fluent.FluentRecordSet, monitorCh cha
 		}
 		switch f.Format {
 		case LTSV:
-			messageCh <- NewFluentRecordSetLTSV(f.Tag, sendBuf)
+			messageCh <- NewFluentRecordSetLTSV(f.Tag, f.ConvertMap, sendBuf)
 		case JSON:
 			messageCh <- NewFluentRecordSetJSON(f.Tag, sendBuf)
 		default:

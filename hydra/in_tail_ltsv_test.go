@@ -17,8 +17,8 @@ var (
 		"foo\tbar:baz\n",
 	}
 	LTSVParsed = []map[string]interface{}{
-		{"foo": "1", "bar": "2"},
-		{"foo": "123"},
+		{"foo": 1, "bar": "2"},
+		{"foo": 123},
 		{"bar": "baz"},
 	}
 )
@@ -28,9 +28,10 @@ func TestTrailLTSV(t *testing.T) {
 	defer os.Remove(file.Name())
 
 	configLogfile := &hydra.ConfigLogfile{
-		Tag:    "test",
-		File:   file.Name(),
-		Format: hydra.LTSV,
+		Tag:        "test",
+		File:       file.Name(),
+		Format:     hydra.LTSV,
+		ConvertMap: hydra.NewConvertMap("foo:integer"),
 	}
 	msgCh, monCh := hydra.NewChannel()
 	watcher, err := hydra.NewWatcher()

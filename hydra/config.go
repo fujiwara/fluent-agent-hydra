@@ -31,10 +31,11 @@ type ConfigServer struct {
 }
 
 type ConfigLogfile struct {
-	Tag       string
-	File      string
-	FieldName string
-	Format    FileFormat
+	Tag        string
+	File       string
+	FieldName  string
+	Format     FileFormat
+	ConvertMap ConvertMap `toml:"Types"`
 }
 
 type ConfigReceiver struct {

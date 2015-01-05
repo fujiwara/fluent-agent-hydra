@@ -25,6 +25,7 @@ type InTail struct {
 	monitorCh  chan Stat
 	eventCh    chan *fsnotify.FileEvent
 	format     FileFormat
+	convertMap ConvertMap
 }
 
 type Watcher struct {
@@ -115,6 +116,7 @@ func NewInTail(config *ConfigLogfile, watcher *Watcher, messageCh chan *fluent.F
 		monitorCh:  monitorCh,
 		eventCh:    eventCh,
 		format:     config.Format,
+		convertMap: config.ConvertMap,
 	}
 	return t, nil
 }
@@ -124,7 +126,7 @@ func (t *InTail) Run() {
 	defer log.Println("[error] Aborted to in_tail.run()")
 
 	log.Println("[info] Trying trail file", t.filename)
-	f := newTrailFile(t.filename, t.tag, t.fieldName, SEEK_TAIL, t.monitorCh, t.format)
+	f := newTrailFile(t.filename, t.tag, t.fieldName, SEEK_TAIL, t.monitorCh, t.format, t.convertMap)
 	for {
 		for {
 			err := t.watchFileEvent(f)
@@ -134,7 +136,7 @@ func (t *InTail) Run() {
 			}
 		}
 		// re open file
-		f = newTrailFile(t.filename, t.tag, t.fieldName, SEEK_HEAD, t.monitorCh, t.format)
+		f = newTrailFile(t.filename, t.tag, t.fieldName, SEEK_HEAD, t.monitorCh, t.format, t.convertMap)
 	}
 }
 
