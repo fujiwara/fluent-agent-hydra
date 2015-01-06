@@ -26,12 +26,16 @@ package fluent
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ugorji/go/codec"
 	"io"
 	"net"
 	"reflect"
+	"strings"
+	"time"
+
+	"github.com/ugorji/go/codec"
 )
 
 type FluentRecord struct {
@@ -50,9 +54,32 @@ func (r FluentRecord) Pack() ([]byte, error) {
 	}
 }
 
+func (r *FluentRecord) String() string {
+	_d, _ := json.Marshal(r.Data)
+	return strings.Join(
+		[]string{
+			time.Unix(r.Timestamp, 0).Format(time.RFC3339),
+			r.Tag,
+			string(_d),
+		},
+		"\t",
+	)
+}
+
+func (r *FluentRecord) GetAllData() map[string]interface{} {
+	return r.Data
+}
+
+func (r *FluentRecord) GetData(key string) (interface{}, bool) {
+	value, ok := r.Data[key]
+	return value, ok
+}
+
 type FluentRecordType interface {
 	Pack() ([]byte, error)
 	GetData(string) (interface{}, bool)
+	GetAllData() map[string]interface{}
+	String() string
 }
 
 type TinyFluentRecord struct {
@@ -68,6 +95,21 @@ func (r *TinyFluentRecord) Pack() ([]byte, error) {
 func (r *TinyFluentRecord) GetData(key string) (interface{}, bool) {
 	value, ok := r.Data[key]
 	return value, ok
+}
+
+func (r *TinyFluentRecord) GetAllData() map[string]interface{} {
+	return r.Data
+}
+
+func (r *TinyFluentRecord) String() string {
+	_d, _ := json.Marshal(r.Data)
+	return strings.Join(
+		[]string{
+			time.Unix(r.Timestamp, 0).Format(time.RFC3339),
+			string(_d),
+		},
+		"\t",
+	)
 }
 
 type TinyFluentMessage struct {
@@ -86,6 +128,21 @@ func (r *TinyFluentMessage) GetData(key string) (interface{}, bool) {
 	} else {
 		return nil, false
 	}
+}
+
+func (r *TinyFluentMessage) GetAllData() map[string]interface{} {
+	return map[string]interface{}{r.FieldName: r.Message}
+}
+
+func (r *TinyFluentMessage) String() string {
+	_d, _ := json.Marshal(r.GetAllData())
+	return strings.Join(
+		[]string{
+			time.Unix(r.Timestamp, 0).Format(time.RFC3339),
+			string(_d),
+		},
+		"\t",
+	)
 }
 
 type FluentRecordSet struct {
@@ -143,8 +200,8 @@ func decodeRecordSet(tag []byte, entries []interface{}) (FluentRecordSet, error)
 		// timestamp
 		var timestamp int64
 		switch entry[0].(type) {
-		case int64, uint64, int32, uint32, float32, float64:
-			timestamp, _ = entry[0].(int64)
+		case int, uint, int64, uint64, int32, uint32, float32, float64:
+			timestamp = toInt64(entry[0])
 		default:
 			return FluentRecordSet{}, errors.New("Failed to decode timestamp field")
 		}
@@ -181,8 +238,8 @@ func DecodeEntries(conn net.Conn) ([]FluentRecordSet, error) {
 
 	var retval []FluentRecordSet
 	switch timestamp_or_entries := v[1].(type) {
-	case int64, uint64, int32, uint32, float32, float64:
-		timestamp, _ := timestamp_or_entries.(int64)
+	case int, uint, int64, uint64, int32, uint32, float32, float64:
+		timestamp := toInt64(timestamp_or_entries)
 		data, ok := v[2].(map[string]interface{})
 		if !ok {
 			return nil, errors.New("Failed to decode data field")
@@ -193,7 +250,7 @@ func DecodeEntries(conn net.Conn) ([]FluentRecordSet, error) {
 				Tag: string(tag), // XXX: byte => rune
 				Records: []FluentRecordType{
 					&TinyFluentRecord{
-						Timestamp: timestamp,
+						Timestamp: int64(timestamp),
 						Data:      data,
 					},
 				},
@@ -230,4 +287,26 @@ func DecodeEntries(conn net.Conn) ([]FluentRecordSet, error) {
 		return nil, errors.New(fmt.Sprintf("Unknown type: %t", timestamp_or_entries))
 	}
 	return retval, nil
+}
+
+func toInt64(v interface{}) int64 {
+	switch v := v.(type) {
+	case int:
+		return int64(v)
+	case int32:
+		return int64(v)
+	case int64:
+		return int64(v)
+	case uint:
+		return int64(v)
+	case uint32:
+		return int64(v)
+	case uint64:
+		return int64(v)
+	case float32:
+		return int64(v)
+	case float64:
+		return int64(v)
+	}
+	return 0
 }
