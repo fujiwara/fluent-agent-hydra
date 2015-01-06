@@ -3,22 +3,26 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/fujiwara/fluent-agent-hydra/fluent"
 	"io"
 	"log"
 	"net"
 	"sync/atomic"
 	"time"
+
+	"github.com/fujiwara/fluent-agent-hydra/fluent"
 )
 
-const (
-	DEBUG = false
+var (
+	DEBUG     = false
+	MessageCh chan fluent.FluentRecordType
 )
 
 func main() {
 	var port int
 	flag.IntVar(&port, "port", 24224, "listen port")
 	flag.IntVar(&port, "p", 24224, "listen port")
+	flag.BoolVar(&DEBUG, "d", false, "debug(print accepted record)")
+	flag.BoolVar(&DEBUG, "debug", false, "debug(print accepted record)")
 	flag.Parse()
 	counter := int64(0)
 	_, ch := runServer(port, &counter)
@@ -72,10 +76,13 @@ func handleConn(conn net.Conn, counter *int64) {
 		}
 		n := 0
 		for _, recordSet := range recordSets {
+			n += len(recordSet.Records)
+			if !DEBUG {
+				continue
+			}
 			for _, record := range recordSet.Records {
-				n++
 				if DEBUG {
-					log.Println(record)
+					fmt.Println(record)
 				}
 			}
 		}
