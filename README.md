@@ -12,6 +12,7 @@ This agent is inspired by [fluent-agent-lite](https://github.com/tagomoris/fluen
   - enable to handle multiple files in a single process.
 - Forwarding messages to external fluentd (like out_forward)
   - multiple fluentd server can be used. When primary server is down, messages will sent to secondary server.
+  - if config.ServerRoundRobin = true, select one server from all servers by round robin.
 - Receiving a fluentd's forward protocol messages via TCP (like in_forward)
   - includes simplified on-memory queue.
 - Stats monitor httpd server
@@ -64,6 +65,7 @@ A example of config.toml
 TagPrefix = "nginx"       # "nginx.access", "nginx.error"
 FieldName = "message"     # default "message"
 ReadBufferSize = 1048576  # default 64KB.
+ServerRoundRobin = true   # default false
 
 # tailing log file (in_tail)
 [[Logs]]
