@@ -71,6 +71,10 @@ ServerRoundRobin = true   # default false
 [[Logs]]
 File = "/var/log/nginx/access.log"
 Tag = "access"
+# parse as ltsv format. (see http://ltsv.org/)
+# convert 'column:type'
+Format = "LTSV"
+Types = "reqtime:float,size:integer,apptime:float,status:integer"
 
 [[Logs]]
 File = "/var/log/nginx/error.log"
