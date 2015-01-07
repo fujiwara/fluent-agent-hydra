@@ -54,15 +54,15 @@ func TestTrailJSON(t *testing.T) {
 		if recordSet.Tag != "test" {
 			t.Errorf("got %v\nwant %v", recordSet.Tag, "test")
 		}
-		i += len(recordSet.Records)
-		for j, _record := range recordSet.Records {
+		for _, _record := range recordSet.Records {
 			record := _record.(*fluent.TinyFluentRecord)
-			if foo, _ := record.GetData("foo"); foo != JSONParsed[j]["foo"] {
-				t.Errorf("unexpected record got:%#v expected:%#v", record, JSONParsed[j])
+			if foo, _ := record.GetData("foo"); foo != JSONParsed[i]["foo"] {
+				t.Errorf("unexpected record got:%#v expected:%#v", record, JSONParsed[i])
 			}
-			if bar, _ := record.GetData("bar"); bar != JSONParsed[j]["bar"] {
-				t.Errorf("unexpected record got:%#v expected:%#v", record, JSONParsed[j])
+			if bar, _ := record.GetData("bar"); bar != JSONParsed[i]["bar"] {
+				t.Errorf("unexpected record got:%#v expected:%#v", record, JSONParsed[i])
 			}
+			i++
 		}
 	}
 }

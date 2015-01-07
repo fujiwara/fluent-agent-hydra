@@ -55,15 +55,15 @@ func TestTrailLTSV(t *testing.T) {
 		if recordSet.Tag != "test" {
 			t.Errorf("got %v\nwant %v", recordSet.Tag, "test")
 		}
-		i += len(recordSet.Records)
-		for j, _record := range recordSet.Records {
+		for _, _record := range recordSet.Records {
 			record := _record.(*fluent.TinyFluentRecord)
-			if foo, _ := record.GetData("foo"); foo != LTSVParsed[j]["foo"] {
+			if foo, _ := record.GetData("foo"); foo != LTSVParsed[i]["foo"] {
 				t.Errorf("unexpected record %v", record)
 			}
-			if bar, _ := record.GetData("bar"); bar != LTSVParsed[j]["bar"] {
+			if bar, _ := record.GetData("bar"); bar != LTSVParsed[i]["bar"] {
 				t.Errorf("unexpected record %v", record)
 			}
+			i++
 		}
 	}
 }
