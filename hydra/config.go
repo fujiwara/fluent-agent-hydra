@@ -16,13 +16,14 @@ const (
 )
 
 type Config struct {
-	TagPrefix      string
-	FieldName      string
-	ReadBufferSize int
-	Servers        []*ConfigServer
-	Logs           []*ConfigLogfile
-	Receiver       *ConfigReceiver
-	Monitor        *ConfigMonitor
+	TagPrefix        string
+	FieldName        string
+	ReadBufferSize   int
+	Servers          []*ConfigServer
+	ServerRoundRobin bool
+	Logs             []*ConfigLogfile
+	Receiver         *ConfigReceiver
+	Monitor          *ConfigMonitor
 }
 
 type ConfigServer struct {

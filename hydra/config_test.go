@@ -22,6 +22,10 @@ func TestReadConfig(t *testing.T) {
 	if config.ReadBufferSize != 1024 {
 		t.Error("invalid ReadBufferSize got", config.ReadBufferSize)
 	}
+	if config.ServerRoundRobin != true {
+		t.Error("invalid ServerRoundRobin got", config.ServerRoundRobin)
+	}
+
 	if len(config.Servers) != 2 {
 		t.Errorf("invalid Servers got %#v", config.Servers)
 	}

@@ -110,6 +110,7 @@ func run(config *hydra.Config) {
 	if err != nil {
 		log.Println("[error]", err)
 	} else {
+		outForward.RoundRobin = config.ServerRoundRobin
 		go outForward.Run()
 	}
 

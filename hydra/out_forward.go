@@ -1,15 +1,18 @@
 package hydra
 
 import (
-	"github.com/fujiwara/fluent-agent-hydra/fluent"
 	"log"
 	"time"
+
+	"github.com/fujiwara/fluent-agent-hydra/fluent"
 )
 
 type OutForward struct {
-	loggers   []*fluent.Fluent
-	messageCh chan *fluent.FluentRecordSet
-	monitorCh chan Stat
+	loggers    []*fluent.Fluent
+	messageCh  chan *fluent.FluentRecordSet
+	monitorCh  chan Stat
+	sent       int64
+	RoundRobin bool
 }
 
 const (
@@ -67,9 +70,18 @@ func (f *OutForward) outForwardRecieve() error {
 	if err != nil {
 		return err
 	}
+	nLoggers := int64(len(f.loggers))
 	for {
+		var loggers []*fluent.Fluent
+		if f.RoundRobin {
+			index := f.sent % nLoggers
+			loggers = f.loggers[index:nLoggers]
+			loggers = append(loggers, f.loggers[0:index]...)
+		} else {
+			loggers = f.loggers
+		}
 	LOGGER:
-		for _, logger := range f.loggers {
+		for _, logger := range loggers {
 			if logger.IsReconnecting() {
 				continue LOGGER
 			}
@@ -83,6 +95,7 @@ func (f *OutForward) outForwardRecieve() error {
 				Messages: int64(len(recordSet.Records)),
 				Bytes:    int64(len(packed)),
 			}
+			f.sent++
 			return nil // success
 		}
 		// all loggers seems down...
