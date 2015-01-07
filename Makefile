@@ -4,6 +4,7 @@ DATE := $(shell date +%Y-%m-%dT%H:%M:%S%z)
 all: test
 	go get github.com/fujiwara/fluent-agent-hydra/cmd/fluent-agent-hydra
 	go get github.com/fujiwara/fluent-agent-hydra/cmd/in-forward-benchmarkd
+	go get github.com/fujiwara/fluent-agent-hydra/cmd/fluent-http-tailf
 
 .PHONY: test
 test:
