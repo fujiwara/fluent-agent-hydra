@@ -22,6 +22,7 @@ var (
 	MessageBufferLen = 100
 	MessageChMutex   sync.Mutex
 	ConnectionId     int64
+	Counter          int64
 )
 
 type OutputOption struct {
@@ -71,12 +72,16 @@ func (w *LTSVEncoder) Encode(data interface{}) error {
 
 func main() {
 	var (
-		forwardPort int
-		httpPort    int
+		forwardPort   int
+		httpPort      int
+		countInterval int
 	)
 	flag.IntVar(&forwardPort, "forward-port", 24224, "fluentd forward listen port")
 	flag.IntVar(&httpPort, "http-port", 24225, "http listen port")
+	flag.IntVar(&countInterval, "count-interval", 60, "log counter output interval(sec)")
 	flag.Parse()
+
+	go runReporter(time.Duration(countInterval) * time.Second)
 
 	var err error
 	err = runForwardServer(forwardPort)
@@ -86,6 +91,16 @@ func main() {
 	err = runHTTPServer(httpPort)
 	if err != nil {
 		log.Fatal(err)
+	}
+}
+
+func runReporter(t time.Duration) {
+	ticker := time.Tick(t)
+	for _ = range ticker {
+		c := atomic.SwapInt64(&Counter, 0)
+		if c > 0 {
+			log.Println("count:", c, "cps:", float64(c)/float64(t/time.Second))
+		}
 	}
 }
 
@@ -119,6 +134,7 @@ func handleForwardConn(conn net.Conn) {
 			return
 		}
 		for _, recordSet := range recordSets {
+			atomic.AddInt64(&Counter, int64(len(recordSet.Records)))
 			for tag, channels := range MessageCh {
 				if !matchTag(tag, recordSet.Tag) {
 					continue
