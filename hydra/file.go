@@ -151,9 +151,9 @@ func (f *File) tailAndSend(messageCh chan *fluent.FluentRecordSet, monitorCh cha
 		}
 		switch f.Format {
 		case LTSV:
-			messageCh <- NewFluentRecordSetLTSV(f.Tag, f.ConvertMap, sendBuf)
+			messageCh <- NewFluentRecordSetLTSV(f.Tag, f.FieldName, f.ConvertMap, sendBuf)
 		case JSON:
-			messageCh <- NewFluentRecordSetJSON(f.Tag, sendBuf)
+			messageCh <- NewFluentRecordSetJSON(f.Tag, f.FieldName, sendBuf)
 		default:
 			messageCh <- NewFluentRecordSet(f.Tag, f.FieldName, sendBuf)
 		}

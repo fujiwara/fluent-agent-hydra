@@ -3,7 +3,6 @@ package hydra
 import (
 	"bytes"
 	"encoding/json"
-	"log"
 	"strings"
 	"time"
 
@@ -52,7 +51,7 @@ func NewFluentRecordSet(tag string, key string, buffer []byte) *fluent.FluentRec
 	}
 }
 
-func NewFluentRecordSetLTSV(tag string, convertMap ConvertMap, buffer []byte) *fluent.FluentRecordSet {
+func NewFluentRecordSetLTSV(tag string, key string, convertMap ConvertMap, buffer []byte) *fluent.FluentRecordSet {
 	timestamp := time.Now().Unix()
 	lines := strings.Split(string(buffer), LineSeparatorStr)
 	records := make([]fluent.FluentRecordType, len(lines))
@@ -60,10 +59,12 @@ func NewFluentRecordSetLTSV(tag string, convertMap ConvertMap, buffer []byte) *f
 		data := make(map[string]interface{})
 		for _, col := range strings.Split(line, LTSVColSeparatorStr) {
 			pair := strings.SplitN(col, LTSVDataSeparatorStr, 2)
-			if len(pair) < 2 {
-				continue
+			if len(pair) == 2 {
+				data[pair[0]] = pair[1]
+			} else {
+				// invalid LTSV format.
+				data[key] = line
 			}
-			data[pair[0]] = pair[1]
 		}
 		if convertMap != nil {
 			ConvertTypes(data, convertMap)
@@ -79,7 +80,7 @@ func NewFluentRecordSetLTSV(tag string, convertMap ConvertMap, buffer []byte) *f
 	}
 }
 
-func NewFluentRecordSetJSON(tag string, buffer []byte) *fluent.FluentRecordSet {
+func NewFluentRecordSetJSON(tag string, key string, buffer []byte) *fluent.FluentRecordSet {
 	timestamp := time.Now().Unix()
 	lines := bytes.Split(buffer, LineSeparator)
 	records := make([]fluent.FluentRecordType, 0)
@@ -87,8 +88,8 @@ func NewFluentRecordSetJSON(tag string, buffer []byte) *fluent.FluentRecordSet {
 		data := make(map[string]interface{})
 		err := json.Unmarshal(line, &data)
 		if err != nil {
-			log.Println("Decode json error", err, string(line))
-			continue
+			// invalid JSON format.
+			data[key] = string(line)
 		}
 		records = append(records, &fluent.TinyFluentRecord{
 			Timestamp: timestamp,

@@ -15,11 +15,13 @@ var (
 		`{"foo":"1","bar":"2"}` + "\n",
 		`{"foo":"123"}` + "\n",
 		`{"bar":"baz"}` + "\n",
+		"invalid JSON line\n",
 	}
 	JSONParsed = []map[string]interface{}{
 		{"foo": "1", "bar": "2"},
 		{"foo": "123"},
 		{"bar": "baz"},
+		{"message": "invalid JSON line"},
 	}
 )
 
@@ -28,9 +30,10 @@ func TestTrailJSON(t *testing.T) {
 	defer os.Remove(file.Name())
 
 	configLogfile := &hydra.ConfigLogfile{
-		Tag:    "test",
-		File:   file.Name(),
-		Format: hydra.JSON,
+		Tag:       "test",
+		File:      file.Name(),
+		Format:    hydra.JSON,
+		FieldName: "message",
 	}
 	msgCh, monCh := hydra.NewChannel()
 	watcher, err := hydra.NewWatcher()

@@ -15,11 +15,13 @@ var (
 		"foo:1\tbar:2\n",
 		"foo:123\n",
 		"foo\tbar:baz\n",
+		"invalid LTSV line\n",
 	}
 	LTSVParsed = []map[string]interface{}{
 		{"foo": 1, "bar": "2"},
 		{"foo": 123},
 		{"bar": "baz"},
+		{"message": "invalid LTSV line"},
 	}
 )
 
@@ -32,6 +34,7 @@ func TestTrailLTSV(t *testing.T) {
 		File:       file.Name(),
 		Format:     hydra.LTSV,
 		ConvertMap: hydra.NewConvertMap("foo:integer"),
+		FieldName:  "message",
 	}
 	msgCh, monCh := hydra.NewChannel()
 	watcher, err := hydra.NewWatcher()
