@@ -142,6 +142,8 @@ func handleForwardConn(conn net.Conn) {
 				for _, ch := range channels {
 					select {
 					case ch <- recordSet:
+					default:
+						log.Printf("[warn] %d records dropped for http client.", len(recordSet.Records))
 					}
 				}
 			}
