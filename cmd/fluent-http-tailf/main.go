@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/fujiwara/fluent-agent-hydra/fluent"
+	"github.com/fujiwara/fluent-agent-hydra/ltsv"
 )
 
 var (
@@ -32,42 +33,6 @@ type OutputOption struct {
 
 type Encoder interface {
 	Encode(interface{}) error
-}
-
-type LTSVEncoder struct {
-	writer io.Writer
-}
-
-func NewLTSVEncoder(w io.Writer) *LTSVEncoder {
-	return &LTSVEncoder{writer: w}
-}
-
-func (w *LTSVEncoder) Encode(data interface{}) error {
-	first := true
-	switch record := data.(type) {
-	default:
-		return fmt.Errorf("unsupported type")
-	case map[string]interface{}:
-		for key, value := range record {
-			if !first {
-				_, err := fmt.Fprint(w.writer, "\t")
-				if err != nil {
-					return err
-				}
-			} else {
-				first = false
-			}
-			_, err := fmt.Fprint(w.writer, key, ":", value)
-			if err != nil {
-				return err
-			}
-		}
-		_, err := fmt.Fprint(w.writer, "\n")
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func main() {
@@ -171,7 +136,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	var encoder Encoder
 	switch t, _ := strconv.ParseBool(r.FormValue("ltsv")); t {
 	case true:
-		encoder = NewLTSVEncoder(w)
+		encoder = ltsv.NewEncoder(w)
 	default:
 		encoder = json.NewEncoder(w)
 	}
