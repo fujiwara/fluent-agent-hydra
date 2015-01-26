@@ -10,6 +10,7 @@ This agent is inspired by [fluent-agent-lite](https://github.com/tagomoris/fluen
 
 - Tailing log files (like in_tail)
   - enable to handle multiple files in a single process.
+  - parse JSON or LTSV format.
 - Forwarding messages to external fluentd (like out_forward)
   - multiple fluentd server can be used. When primary server is down, messages will sent to secondary server.
   - if config.ServerRoundRobin = true, select one server from all servers by round robin.
@@ -72,8 +73,12 @@ ServerRoundRobin = true   # default false
 File = "/var/log/nginx/access.log"
 Tag = "access"
 # parse as ltsv format. (see http://ltsv.org/)
-# convert 'column:type'
+# Format = "None"(default) | "LTSV" | "JSON"
 Format = "LTSV"
+
+# convert column data type
+# 'column1_name:type,column2_name:type'
+# type = "interger" | "float" | "bool" | otherwise as string
 Types = "reqtime:float,size:integer,apptime:float,status:integer"
 
 [[Logs]]
