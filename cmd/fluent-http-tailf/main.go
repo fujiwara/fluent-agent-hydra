@@ -8,6 +8,8 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -24,6 +26,7 @@ var (
 	MessageChMutex   sync.Mutex
 	ConnectionId     int64
 	Counter          int64
+	DumpCh           chan fluent.FluentRecordSet
 )
 
 type OutputOption struct {
@@ -37,17 +40,29 @@ type Encoder interface {
 
 func main() {
 	var (
-		forwardPort   int
-		httpPort      int
-		countInterval int
+		forwardPort     int
+		httpPort        int
+		countInterval   int
+		dir             string
+		dumpIncludeTag  bool
+		dumpIncludeTime bool
+		dumpFileFormat  string
 	)
 	flag.IntVar(&forwardPort, "forward-port", 24224, "fluentd forward listen port")
 	flag.IntVar(&httpPort, "http-port", 24225, "http listen port")
 	flag.IntVar(&countInterval, "count-interval", 60, "log counter output interval(sec)")
+	flag.StringVar(&dir, "dump-file-dir", "", "dump file directory")
+	flag.BoolVar(&dumpIncludeTag, "dump-include-tag", false, "dump file include tag")
+	flag.BoolVar(&dumpIncludeTime, "dump-include-time", false, "dump file include time")
+	flag.StringVar(&dumpFileFormat, "dump-file-format", "json", "dump file format")
 	flag.Parse()
 
 	go runReporter(time.Duration(countInterval) * time.Second)
-
+	if dir != "" {
+		DumpCh = make(chan fluent.FluentRecordSet, MessageBufferLen)
+		option := OutputOption{dumpIncludeTime, dumpIncludeTag}
+		go runDumper(dir, dumpFileFormat, option)
+	}
 	var err error
 	err = runForwardServer(forwardPort)
 	if err != nil {
@@ -56,6 +71,52 @@ func main() {
 	err = runHTTPServer(httpPort)
 	if err != nil {
 		log.Fatal(err)
+	}
+}
+
+func runDumper(dir string, format string, option OutputOption) {
+	var filename string
+	var fh io.WriteCloser
+	var err error
+	for {
+		rs := <-DumpCh
+		now := time.Now().Format("2006-01-02-15")
+		_filename := filepath.Join(dir, rs.Tag+"."+now)
+		if filename != _filename {
+			if fh != nil {
+				fh.Close()
+			}
+			filename = _filename
+			fh, err = os.OpenFile(filename, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0644)
+			defer fh.Close()
+			if err != nil {
+				log.Println("[error]", err)
+				continue
+			}
+		}
+		if fh == nil {
+			continue
+		}
+		var encoder Encoder
+		switch format {
+		case "ltsv":
+			encoder = ltsv.NewEncoder(fh)
+		default:
+			encoder = json.NewEncoder(fh)
+		}
+		for _, record := range rs.Records {
+			record, _ := record.(*fluent.TinyFluentRecord)
+			if option.IncludeTime {
+				fmt.Fprint(fh, time.Unix(record.Timestamp, 0).Format(time.RFC3339), "\t")
+			}
+			if option.IncludeTag {
+				fmt.Fprint(fh, rs.Tag, "\t")
+			}
+			err = encoder.Encode(record.GetAllData())
+			if err != nil {
+				continue
+			}
+		}
 	}
 }
 
@@ -100,6 +161,13 @@ func handleForwardConn(conn net.Conn) {
 		}
 		for _, recordSet := range recordSets {
 			atomic.AddInt64(&Counter, int64(len(recordSet.Records)))
+			if DumpCh != nil {
+				select {
+				case DumpCh <- recordSet:
+				default:
+					log.Printf("[warn] %d records dropped for dump file. tag: %s", len(recordSet.Records), recordSet.Tag)
+				}
+			}
 			for tag, channels := range MessageCh {
 				if !matchTag(tag, recordSet.Tag) {
 					continue
