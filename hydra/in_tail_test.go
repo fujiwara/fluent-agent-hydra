@@ -46,9 +46,9 @@ const (
 func TestTrail(t *testing.T) {
 	hydra.ReadBufferSize = ReadBufferSizeForTest
 
-	file, _ := ioutil.TempFile(os.TempDir(), "logfile.")
-	file.WriteString("first line is must be trailed...\n")
-	defer os.Remove(file.Name())
+	tmpdir, _ := ioutil.TempDir(os.TempDir(), "hydra-test")
+	file, _ := ioutil.TempFile(tmpdir, "logfile.")
+	defer os.RemoveAll(tmpdir)
 
 	go fileWriter(t, file, Logs)
 

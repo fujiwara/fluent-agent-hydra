@@ -26,8 +26,9 @@ var (
 )
 
 func TestTrailLTSV(t *testing.T) {
-	file, _ := ioutil.TempFile(os.TempDir(), "logfile.")
-	defer os.Remove(file.Name())
+	tmpdir, _ := ioutil.TempDir(os.TempDir(), "hydra-test")
+	file, _ := ioutil.TempFile(tmpdir, "logfile.")
+	defer os.RemoveAll(tmpdir)
 
 	configLogfile := &hydra.ConfigLogfile{
 		Tag:        "test",
