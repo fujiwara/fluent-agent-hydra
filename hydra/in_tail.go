@@ -126,7 +126,7 @@ func (t *InTail) Run() {
 	defer log.Println("[error] Aborted to in_tail.run()")
 
 	log.Println("[info] Trying trail file", t.filename)
-	f := newTrailFile(t.filename, t.tag, t.fieldName, SEEK_TAIL, t.monitorCh, t.format, t.convertMap)
+	f := t.newTrailFile(SEEK_TAIL)
 	for {
 		for {
 			err := t.watchFileEvent(f)
@@ -136,7 +136,36 @@ func (t *InTail) Run() {
 			}
 		}
 		// re open file
-		f = newTrailFile(t.filename, t.tag, t.fieldName, SEEK_HEAD, t.monitorCh, t.format, t.convertMap)
+		f = t.newTrailFile(SEEK_HEAD)
+	}
+}
+
+func (t *InTail) newTrailFile(startPos int64) *File {
+	seekTo := startPos
+	first := true
+	for {
+		f, err := openFile(t.filename, seekTo)
+		if err == nil {
+			f.Tag = t.tag
+			f.FieldName = t.fieldName
+			f.Format = t.format
+			f.ConvertMap = t.convertMap
+			log.Println("[info] Trailing file:", f.Path, "tag:", f.Tag, "format:", t.format)
+			t.monitorCh <- f.UpdateStat()
+			return f
+		}
+		t.monitorCh <- &FileStat{
+			Tag:      t.tag,
+			File:     t.filename,
+			Position: int64(-1),
+			Error:    monitorError(err),
+		}
+		if first {
+			log.Println("[warning]", err, "Retrying...")
+		}
+		first = false
+		seekTo = SEEK_HEAD
+		time.Sleep(OpenRetryInterval)
 	}
 }
 

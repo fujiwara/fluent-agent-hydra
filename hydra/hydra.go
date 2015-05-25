@@ -67,7 +67,7 @@ func NewFluentRecordSetLTSV(tag string, key string, convertMap ConvertMap, buffe
 			}
 		}
 		if convertMap != nil {
-			ConvertTypes(data, convertMap)
+			convertMap.ConvertTypes(data)
 		}
 		records[i] = &fluent.TinyFluentRecord{
 			Timestamp: timestamp,

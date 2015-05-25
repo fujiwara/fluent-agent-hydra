@@ -2,13 +2,13 @@ package hydra
 
 import (
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type FileFormat int
-type Converter int
-type ConvertMap map[string]Converter
 
 const (
 	None FileFormat = iota
@@ -16,11 +16,38 @@ const (
 	JSON
 )
 
-const (
-	ConvertBool Converter = iota + 1
-	ConvertInt
-	ConvertFloat
+type Converter interface {
+	Convert(string) (interface{}, error)
+}
+
+type BoolConverter int
+type IntConverter int
+type FloatConverter int
+type TimeConverter string
+
+var (
+	convertBool  BoolConverter
+	convertInt   IntConverter
+	convertFloat FloatConverter
 )
+
+func (c BoolConverter) Convert(v string) (interface{}, error) {
+	return strconv.ParseBool(v)
+}
+
+func (c IntConverter) Convert(v string) (interface{}, error) {
+	return strconv.Atoi(v)
+}
+
+func (c FloatConverter) Convert(v string) (interface{}, error) {
+	return strconv.ParseFloat(v, 64)
+}
+
+func (c TimeConverter) Convert(v string) (interface{}, error) {
+	return time.Parse(string(c), v)
+}
+
+type ConvertMap map[string]Converter
 
 func (f *FileFormat) UnmarshalText(text []byte) error {
 	switch strings.ToLower(string(text)) {
@@ -42,7 +69,7 @@ func (c *ConvertMap) UnmarshalText(text []byte) error {
 }
 
 func NewConvertMap(config string) ConvertMap {
-	convertMap := make(ConvertMap)
+	m := make(ConvertMap)
 	for _, subdef := range strings.Split(config, ",") {
 		def := strings.SplitN(subdef, ":", 2)
 		if len(def) < 2 {
@@ -51,38 +78,29 @@ func NewConvertMap(config string) ConvertMap {
 		key := def[0]
 		switch def[1] {
 		case "bool":
-			convertMap[key] = ConvertBool
+			m[key] = convertBool
 		case "integer":
-			convertMap[key] = ConvertInt
+			m[key] = convertInt
 		case "float":
-			convertMap[key] = ConvertFloat
+			m[key] = convertFloat
 		default:
 		}
 	}
-	return convertMap
+	return m
 }
 
-func ConvertTypes(data map[string]interface{}, convertMap ConvertMap) {
-	for key, _value := range data {
-		switch value := _value.(type) {
-		default:
-			continue
-		case string:
-			switch convertMap[key] {
-			case ConvertBool:
-				v, err := strconv.ParseBool(value)
+func (c ConvertMap) ConvertTypes(data map[string]interface{}) {
+	for key, converter := range c {
+		if _value, ok := data[key]; ok {
+			switch value := _value.(type) {
+			default:
+				continue
+			case string:
+				v, err := converter.Convert(value)
 				if err == nil {
 					data[key] = v
-				}
-			case ConvertInt:
-				v, err := strconv.Atoi(value)
-				if err == nil {
-					data[key] = v
-				}
-			case ConvertFloat:
-				v, err := strconv.ParseFloat(value, 64)
-				if err == nil {
-					data[key] = v
+				} else {
+					log.Println(err)
 				}
 			}
 		}
