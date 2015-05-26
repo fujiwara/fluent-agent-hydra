@@ -23,45 +23,16 @@ var (
 
 type File struct {
 	*os.File
-	Path       string
-	Tag        string
-	Position   int64
-	readBuf    []byte
-	contBuf    []byte
-	lastStat   os.FileInfo
-	FieldName  string
-	FileStat   *FileStat
-	Format     FileFormat
-	ConvertMap ConvertMap
-}
-
-func newTrailFile(path string, tag string, fieldName string, startPos int64, monitorCh chan Stat, format FileFormat, convertMap ConvertMap) *File {
-	seekTo := startPos
-	first := true
-	for {
-		f, err := openFile(path, seekTo)
-		if err == nil {
-			f.Tag = tag
-			f.FieldName = fieldName
-			f.Format = format
-			f.ConvertMap = convertMap
-			log.Println("[info] Trailing file:", f.Path, "tag:", f.Tag, "format:", format)
-			monitorCh <- f.UpdateStat()
-			return f
-		}
-		monitorCh <- &FileStat{
-			Tag:      tag,
-			File:     path,
-			Position: int64(-1),
-			Error:    monitorError(err),
-		}
-		if first {
-			log.Println("[warning]", err, "Retrying...")
-		}
-		first = false
-		seekTo = SEEK_HEAD
-		time.Sleep(OpenRetryInterval)
-	}
+	Path           string
+	Tag            string
+	Position       int64
+	readBuf        []byte
+	contBuf        []byte
+	lastStat       os.FileInfo
+	FieldName      string
+	FileStat       *FileStat
+	Format         FileFormat
+	RecordModifier *RecordModifier
 }
 
 func openFile(path string, startPos int64) (*File, error) {
@@ -151,9 +122,9 @@ func (f *File) tailAndSend(messageCh chan *fluent.FluentRecordSet, monitorCh cha
 		}
 		switch f.Format {
 		case LTSV:
-			messageCh <- NewFluentRecordSetLTSV(f.Tag, f.FieldName, f.ConvertMap, sendBuf)
+			messageCh <- NewFluentRecordSetLTSV(f.Tag, f.FieldName, f.RecordModifier, sendBuf)
 		case JSON:
-			messageCh <- NewFluentRecordSetJSON(f.Tag, f.FieldName, sendBuf)
+			messageCh <- NewFluentRecordSetJSON(f.Tag, f.FieldName, f.RecordModifier, sendBuf)
 		default:
 			messageCh <- NewFluentRecordSet(f.Tag, f.FieldName, sendBuf)
 		}

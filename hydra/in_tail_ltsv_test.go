@@ -3,6 +3,7 @@ package hydra_test
 import (
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -11,14 +12,17 @@ import (
 )
 
 var (
+	JST, _   = time.LoadLocation("Asia/Tokyo")
 	LTSVLogs = []string{
-		"foo:1\tbar:2\n",
+		strings.Join([]string{"foo:1", "bar:2", "time:2015-05-26T11:22:33Z"}, "\t") + "\n",
+		strings.Join([]string{"foo:AAA", "bar:BBB", "time:2013-11-22T04:21:31+09:00"}, "\t") + "\n",
 		"foo:123\n",
-		"foo\tbar:baz\n",
+		strings.Join([]string{"foo", "bar:baz"}, "\t") + "\n",
 		"invalid LTSV line\n",
 	}
 	LTSVParsed = []map[string]interface{}{
-		{"foo": 1, "bar": "2"},
+		{"foo": 1, "bar": "2", "_time": time.Date(2015, time.May, 26, 11, 22, 33, 0, time.UTC)},
+		{"foo": "AAA", "bar": "BBB", "_time": time.Date(2013, time.November, 22, 04, 21, 31, 0, JST)},
 		{"foo": 123},
 		{"bar": "baz"},
 		{"message": "invalid LTSV line"},
@@ -36,6 +40,9 @@ func TestTrailLTSV(t *testing.T) {
 		Format:     hydra.LTSV,
 		ConvertMap: hydra.NewConvertMap("foo:integer"),
 		FieldName:  "message",
+		TimeParse:  true,
+		TimeFormat: hydra.DefaultTimeFormat,
+		TimeKey:    hydra.DefaultTimeKey,
 	}
 	msgCh, monCh := hydra.NewChannel()
 	watcher, err := hydra.NewWatcher()
@@ -66,6 +73,11 @@ func TestTrailLTSV(t *testing.T) {
 			}
 			if bar, _ := record.GetData("bar"); bar != LTSVParsed[i]["bar"] {
 				t.Errorf("unexpected record %v", record)
+			}
+			if ts, ok := LTSVParsed[i]["_time"]; ok {
+				if ts.(time.Time).Unix() != record.Timestamp {
+					t.Errorf("expected timestamp %s got %s", ts, record.Timestamp)
+				}
 			}
 			i++
 		}

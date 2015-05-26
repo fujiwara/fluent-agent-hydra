@@ -51,7 +51,7 @@ func NewFluentRecordSet(tag string, key string, buffer []byte) *fluent.FluentRec
 	}
 }
 
-func NewFluentRecordSetLTSV(tag string, key string, convertMap ConvertMap, buffer []byte) *fluent.FluentRecordSet {
+func NewFluentRecordSetLTSV(tag string, key string, mod *RecordModifier, buffer []byte) *fluent.FluentRecordSet {
 	timestamp := time.Now().Unix()
 	lines := strings.Split(string(buffer), LineSeparatorStr)
 	records := make([]fluent.FluentRecordType, len(lines))
@@ -66,13 +66,14 @@ func NewFluentRecordSetLTSV(tag string, key string, convertMap ConvertMap, buffe
 				data[key] = line
 			}
 		}
-		if convertMap != nil {
-			ConvertTypes(data, convertMap)
-		}
-		records[i] = &fluent.TinyFluentRecord{
+		r := &fluent.TinyFluentRecord{
 			Timestamp: timestamp,
 			Data:      data,
 		}
+		if mod != nil {
+			mod.Modify(r)
+		}
+		records[i] = r
 	}
 	return &fluent.FluentRecordSet{
 		Tag:     tag,
@@ -80,7 +81,7 @@ func NewFluentRecordSetLTSV(tag string, key string, convertMap ConvertMap, buffe
 	}
 }
 
-func NewFluentRecordSetJSON(tag string, key string, buffer []byte) *fluent.FluentRecordSet {
+func NewFluentRecordSetJSON(tag string, key string, mod *RecordModifier, buffer []byte) *fluent.FluentRecordSet {
 	timestamp := time.Now().Unix()
 	lines := bytes.Split(buffer, LineSeparator)
 	records := make([]fluent.FluentRecordType, 0)
@@ -91,10 +92,14 @@ func NewFluentRecordSetJSON(tag string, key string, buffer []byte) *fluent.Fluen
 			// invalid JSON format.
 			data[key] = string(line)
 		}
-		records = append(records, &fluent.TinyFluentRecord{
+		r := &fluent.TinyFluentRecord{
 			Timestamp: timestamp,
 			Data:      data,
-		})
+		}
+		if mod != nil {
+			mod.Modify(r)
+		}
+		records = append(records, r)
 	}
 	return &fluent.FluentRecordSet{
 		Tag:     tag,
