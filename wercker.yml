@@ -4,4 +4,5 @@ build:
     - script:
         name: make
         code: |
+          make get-deps
           make all
