@@ -23,16 +23,16 @@ var (
 
 type File struct {
 	*os.File
-	Path       string
-	Tag        string
-	Position   int64
-	readBuf    []byte
-	contBuf    []byte
-	lastStat   os.FileInfo
-	FieldName  string
-	FileStat   *FileStat
-	Format     FileFormat
-	ConvertMap ConvertMap
+	Path           string
+	Tag            string
+	Position       int64
+	readBuf        []byte
+	contBuf        []byte
+	lastStat       os.FileInfo
+	FieldName      string
+	FileStat       *FileStat
+	Format         FileFormat
+	RecordModifier *RecordModifier
 }
 
 func openFile(path string, startPos int64) (*File, error) {
@@ -122,9 +122,9 @@ func (f *File) tailAndSend(messageCh chan *fluent.FluentRecordSet, monitorCh cha
 		}
 		switch f.Format {
 		case LTSV:
-			messageCh <- NewFluentRecordSetLTSV(f.Tag, f.FieldName, f.ConvertMap, sendBuf)
+			messageCh <- NewFluentRecordSetLTSV(f.Tag, f.FieldName, f.RecordModifier, sendBuf)
 		case JSON:
-			messageCh <- NewFluentRecordSetJSON(f.Tag, f.FieldName, sendBuf)
+			messageCh <- NewFluentRecordSetJSON(f.Tag, f.FieldName, f.RecordModifier, sendBuf)
 		default:
 			messageCh <- NewFluentRecordSet(f.Tag, f.FieldName, sendBuf)
 		}

@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/fujiwara/fluent-agent-hydra/fluent"
 )
 
 type FileFormat int
@@ -43,11 +45,34 @@ func (c FloatConverter) Convert(v string) (interface{}, error) {
 	return strconv.ParseFloat(v, 64)
 }
 
-func (c TimeConverter) Convert(v string) (interface{}, error) {
+func (c TimeConverter) Convert(v string) (time.Time, error) {
 	return time.Parse(string(c), v)
 }
 
 type ConvertMap map[string]Converter
+
+type RecordModifier struct {
+	convertMap    ConvertMap
+	timeParse     bool
+	timeKey       string
+	timeConverter TimeConverter
+}
+
+func (m *RecordModifier) Modify(r *fluent.TinyFluentRecord) {
+	if m.convertMap != nil {
+		m.convertMap.ConvertTypes(r.Data)
+	}
+	if !m.timeParse {
+		return
+	}
+	if _t, ok := r.Data[m.timeKey]; ok {
+		if t, ok := _t.(string); ok {
+			if ts, err := m.timeConverter.Convert(t); err == nil {
+				r.Timestamp = ts.Unix()
+			}
+		}
+	}
+}
 
 func (f *FileFormat) UnmarshalText(text []byte) error {
 	switch strings.ToLower(string(text)) {

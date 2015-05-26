@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"strconv"
+	"time"
 
 	"github.com/BurntSushi/toml"
 )
@@ -13,6 +14,8 @@ const (
 	DefaultFluentdPort       = 24224
 	DefaultFieldName         = "message"
 	DefaultMaxBufferMessages = 1024 * 1024
+	DefaultTimeKey           = "time"
+	DefaultTimeFormat        = time.RFC3339
 )
 
 type Config struct {
@@ -37,6 +40,9 @@ type ConfigLogfile struct {
 	FieldName  string
 	Format     FileFormat
 	ConvertMap ConvertMap `toml:"Types"`
+	TimeParse  bool
+	TimeKey    string
+	TimeFormat string
 }
 
 type ConfigReceiver struct {
@@ -139,6 +145,12 @@ func (cl *ConfigLogfile) Restrict(c *Config) {
 	}
 	if c.TagPrefix != "" {
 		cl.Tag = c.TagPrefix + "." + cl.Tag
+	}
+	if cl.TimeKey != "" {
+		cl.TimeKey = DefaultTimeKey
+	}
+	if cl.TimeFormat != "" {
+		cl.TimeFormat = DefaultTimeFormat
 	}
 }
 

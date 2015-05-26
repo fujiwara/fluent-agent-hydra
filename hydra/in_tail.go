@@ -17,15 +17,15 @@ const (
 )
 
 type InTail struct {
-	filename   string
-	tag        string
-	fieldName  string
-	lastReadAt time.Time
-	messageCh  chan *fluent.FluentRecordSet
-	monitorCh  chan Stat
-	eventCh    chan fsnotify.Event
-	format     FileFormat
-	convertMap ConvertMap
+	filename       string
+	tag            string
+	fieldName      string
+	lastReadAt     time.Time
+	messageCh      chan *fluent.FluentRecordSet
+	monitorCh      chan Stat
+	eventCh        chan fsnotify.Event
+	format         FileFormat
+	recordModifier *RecordModifier
 }
 
 type Watcher struct {
@@ -106,17 +106,22 @@ func NewInTail(config *ConfigLogfile, watcher *Watcher, messageCh chan *fluent.F
 	if err != nil {
 		return nil, err
 	}
-
+	modifier := &RecordModifier{
+		convertMap:    config.ConvertMap,
+		timeParse:     config.TimeParse,
+		timeKey:       config.TimeKey,
+		timeConverter: TimeConverter(config.TimeFormat),
+	}
 	t := &InTail{
-		filename:   filename,
-		tag:        config.Tag,
-		fieldName:  config.FieldName,
-		lastReadAt: time.Now(),
-		messageCh:  messageCh,
-		monitorCh:  monitorCh,
-		eventCh:    eventCh,
-		format:     config.Format,
-		convertMap: config.ConvertMap,
+		filename:       filename,
+		tag:            config.Tag,
+		fieldName:      config.FieldName,
+		lastReadAt:     time.Now(),
+		messageCh:      messageCh,
+		monitorCh:      monitorCh,
+		eventCh:        eventCh,
+		format:         config.Format,
+		recordModifier: modifier,
 	}
 	return t, nil
 }
@@ -149,7 +154,7 @@ func (t *InTail) newTrailFile(startPos int64) *File {
 			f.Tag = t.tag
 			f.FieldName = t.fieldName
 			f.Format = t.format
-			f.ConvertMap = t.convertMap
+			f.RecordModifier = t.recordModifier
 			log.Println("[info] Trailing file:", f.Path, "tag:", f.Tag, "format:", t.format)
 			t.monitorCh <- f.UpdateStat()
 			return f
