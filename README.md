@@ -81,6 +81,15 @@ Format = "LTSV"
 # type = "interger" | "float" | "bool" | otherwise as string
 Types = "reqtime:float,size:integer,apptime:float,status:integer"
 
+# parse a time string in log lines, and set it as record's timestamp
+TimeParse = true      # default false
+TimeKey = "timestamp" # default "time"
+
+# TimeFormat is passed to Golang's time.Parse().
+# http://golang.org/pkg/time/#Parse
+# default time.RFC3339 == "2006-01-02T15:04:05Z07:00"
+TimeFormat = "02/Jan/2006:15:04:05 Z0700"
+
 [[Logs]]
 File = "/var/log/nginx/error.log"
 Tag = "error"
