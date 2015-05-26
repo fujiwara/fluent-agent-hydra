@@ -2,7 +2,6 @@ package hydra
 
 import (
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -121,11 +120,8 @@ func (c ConvertMap) ConvertTypes(data map[string]interface{}) {
 			default:
 				continue
 			case string:
-				v, err := converter.Convert(value)
-				if err == nil {
+				if v, err := converter.Convert(value); err == nil {
 					data[key] = v
-				} else {
-					log.Println(err)
 				}
 			}
 		}
