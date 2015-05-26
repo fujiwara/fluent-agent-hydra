@@ -1,0 +1,7 @@
+box: wercker/golang
+build:
+  steps:
+    - script:
+        name: make
+        code: |
+          make all
