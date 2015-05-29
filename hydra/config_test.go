@@ -35,18 +35,38 @@ func TestReadConfig(t *testing.T) {
 	if config.Servers[1].Host != "127.0.0.1" || config.Servers[1].Port != 24225 {
 		t.Errorf("invalid Servers[1] got %#v", config.Servers[1])
 	}
-	if len(config.Logs) != 3 {
+
+	if len(config.Logs) != 4 {
 		t.Errorf("invalid Logs got %#v", config.Logs)
 	}
-	if config.Logs[0].Tag != "foo.tag1" || config.Logs[0].File != "/tmp/foo.log" || config.Logs[0].FieldName != "message" {
-		t.Errorf("invalid Logs[0] got %#v", config.Logs[0])
-	}
-	if config.Logs[1].Tag != "foo.tag2" || config.Logs[1].File != "/tmp/bar.log" || config.Logs[1].FieldName != "msg" {
-		t.Errorf("invalid Logs[1] got %#v", config.Logs[1])
+	if c := config.Logs[0]; c.Tag != "foo.tag1" ||
+		c.File != "/tmp/foo.log" ||
+		c.FieldName != "message" ||
+		c.TimeParse != false {
+		t.Errorf("invalid Logs[0] got %#v", c)
 	}
 
-	if config.Logs[2].Tag != "foo.ltsv" || config.Logs[2].File != "/tmp/baz.log" {
-		t.Errorf("invalid Logs[2] got %#v", config.Logs[2])
+	if c := config.Logs[1]; c.Tag != "foo.tag2" ||
+		c.File != "/tmp/bar.log" ||
+		c.FieldName != "msg" ||
+		c.TimeParse != false {
+		t.Errorf("invalid Logs[1] got %#v", c)
+	}
+
+	if c := config.Logs[2]; c.Tag != "foo.ltsv" ||
+		c.File != "/tmp/baz.log" ||
+		c.TimeParse != true ||
+		c.TimeKey != "time" ||
+		c.TimeFormat != "2006-01-02T15:04:05Z07:00" {
+		t.Errorf("invalid Logs[2] got %#v", c)
+	}
+
+	if c := config.Logs[3]; c.Tag != "foo.ltsv" ||
+		c.File != "/tmp/bazz.log" ||
+		c.TimeParse != true ||
+		c.TimeKey != "timestamp" ||
+		c.TimeFormat != "02/Jan/2006:15:04:05 Z0700" {
+		t.Errorf("invalid Logs[3] got %#v", c)
 	}
 
 	if config.Receiver.Host != "localhost" || config.Receiver.Port != 24224 {

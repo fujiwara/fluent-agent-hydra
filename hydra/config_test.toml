@@ -27,6 +27,15 @@ Tag = "ltsv"
 File = "/tmp/baz.log"
 Format = "ltsv"
 Types = "foo:string,id:integer"
+TimeParse = true
+
+[[Logs]]
+Tag = "ltsv"
+File = "/tmp/bazz.log"
+Format = "ltsv"
+TimeParse = true
+TimeKey = "timestamp"
+TimeFormat = "02/Jan/2006:15:04:05 Z0700"
 
 [Monitor]
 Host = "127.0.0.2"
