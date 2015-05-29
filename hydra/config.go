@@ -146,10 +146,10 @@ func (cl *ConfigLogfile) Restrict(c *Config) {
 	if c.TagPrefix != "" {
 		cl.Tag = c.TagPrefix + "." + cl.Tag
 	}
-	if cl.TimeKey != "" {
+	if cl.TimeKey == "" {
 		cl.TimeKey = DefaultTimeKey
 	}
-	if cl.TimeFormat != "" {
+	if cl.TimeFormat == "" {
 		cl.TimeFormat = DefaultTimeFormat
 	}
 }
