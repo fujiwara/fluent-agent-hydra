@@ -40,6 +40,7 @@ type SentStat struct {
 	Tag      string `json:"-"`
 	Messages int64  `json:"messages"`
 	Bytes    int64  `json:"bytes"`
+	Sents    int64  `json:"sents"`
 }
 
 type FileStat struct {
@@ -78,6 +79,7 @@ func (s *SentStat) ApplyTo(ss *Stats) {
 	if _s, ok := ss.Sent[s.Tag]; ok {
 		_s.Messages += s.Messages
 		_s.Bytes += s.Bytes
+		_s.Sents += s.Sents
 	} else {
 		ss.Sent[s.Tag] = s
 	}
