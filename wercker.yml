@@ -1,6 +1,7 @@
 box: wercker/golang
 build:
   steps:
+    - wercker/setup-go-workspace@1.2.1
     - script:
         name: make
         code: |
