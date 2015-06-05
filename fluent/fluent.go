@@ -137,7 +137,7 @@ func (f *Fluent) recordError(err error) {
 }
 
 func (f *Fluent) reconnect() {
-	log.Println("[info] Trying reconnect")
+	log.Println("[info] Trying reconnect to", f.Server)
 	for i := 0; ; i++ {
 		err := f.connect()
 		if err == nil {
