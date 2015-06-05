@@ -55,6 +55,7 @@ type Fluent struct {
 	mu              sync.Mutex
 	lastError       error
 	lastErrorAt     time.Time
+	Sent            int64
 }
 
 // New creates a new Logger.
@@ -165,6 +166,15 @@ func (f *Fluent) reconnect() {
 	}
 }
 
+func (f *Fluent) RefreshConnection() error {
+	f.Close()
+	if err := f.connect(); err != nil {
+		go f.reconnect()
+		return err
+	}
+	return nil
+}
+
 func (f *Fluent) Send(buffer []byte) (err error) {
 	if f.conn == nil {
 		f.mu.Lock()
@@ -182,6 +192,7 @@ func (f *Fluent) Send(buffer []byte) (err error) {
 			f.recordError(err)
 			f.Close()
 		}
+		f.Sent++
 	}
 	return
 }

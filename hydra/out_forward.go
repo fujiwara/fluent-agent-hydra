@@ -17,7 +17,7 @@ type OutForward struct {
 
 const (
 	serverHealthCheckInterval = 3 * time.Second
-	periodicalReconnectCount  = 100
+	maxKeepAliveSentCount     = 100
 )
 
 // OutForward ... recieve FluentRecordSet from channel, and send it to passed loggers until success.
@@ -37,6 +37,7 @@ func NewOutForward(configServers []*ConfigServer, messageCh chan *fluent.FluentR
 		loggers:   loggers,
 		messageCh: messageCh,
 		monitorCh: monitorCh,
+		sent:      0,
 	}, nil
 }
 
@@ -98,8 +99,8 @@ func (f *OutForward) outForwardRecieve() error {
 				Sents:    1,
 			}
 			f.sent++
-			if f.sent%periodicalReconnectCount == 0 {
-				f.reconnectAll()
+			if logger.Sent%maxKeepAliveSentCount == 0 {
+				logger.RefreshConnection()
 			}
 			return nil // success
 		}
@@ -125,13 +126,5 @@ func (f *OutForward) checkServerHealth(i int) {
 			Alive:   f.loggers[i].Alive(),
 			Error:   f.loggers[i].LastErrorString(),
 		}
-	}
-}
-
-func (f *OutForward) reconnectAll() {
-	log.Println("[info] periodical closing")
-	for _, logger := range f.loggers {
-		logger.Close()
-		logger.Send([]byte{})
 	}
 }
