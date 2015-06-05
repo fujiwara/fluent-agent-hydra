@@ -111,6 +111,9 @@ func run(config *hydra.Config) {
 		log.Println("[error]", err)
 	} else {
 		outForward.RoundRobin = config.ServerRoundRobin
+		if outForward.RoundRobin {
+			log.Println("[info] ServerRoundRobin enabled")
+		}
 		go outForward.Run()
 	}
 

@@ -9,6 +9,7 @@ all: test
 	go get github.com/fujiwara/fluent-agent-hydra/cmd/fluent-http-tailf
 
 test:
+	@echo ${GOPATH}
 	cd fluent && go test
 	cd ltsv && go test
 	cd hydra && go test

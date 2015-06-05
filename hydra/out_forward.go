@@ -17,6 +17,7 @@ type OutForward struct {
 
 const (
 	serverHealthCheckInterval = 3 * time.Second
+	maxKeepAliveSentCount     = 100
 )
 
 // OutForward ... recieve FluentRecordSet from channel, and send it to passed loggers until success.
@@ -36,6 +37,7 @@ func NewOutForward(configServers []*ConfigServer, messageCh chan *fluent.FluentR
 		loggers:   loggers,
 		messageCh: messageCh,
 		monitorCh: monitorCh,
+		sent:      0,
 	}, nil
 }
 
@@ -94,8 +96,12 @@ func (f *OutForward) outForwardRecieve() error {
 				Tag:      recordSet.Tag,
 				Messages: int64(len(recordSet.Records)),
 				Bytes:    int64(len(packed)),
+				Sents:    1,
 			}
 			f.sent++
+			if logger.Sent%maxKeepAliveSentCount == 0 {
+				logger.RefreshConnection()
+			}
 			return nil // success
 		}
 		// all loggers seems down...
