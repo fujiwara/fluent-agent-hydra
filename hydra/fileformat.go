@@ -17,6 +17,15 @@ const (
 	JSON
 )
 
+const (
+	ConvertTypeString = iota
+	ConvertTypeInt
+	ConvertTypeFloat
+	ConvertTypeBool
+)
+
+type ConvertType int
+
 type Converter interface {
 	Convert(string) (interface{}, error)
 }
@@ -48,7 +57,10 @@ func (c TimeConverter) Convert(v string) (time.Time, error) {
 	return time.Parse(string(c), v)
 }
 
-type ConvertMap map[string]Converter
+type ConvertMap struct {
+	TypeMap      map[string]ConvertType
+	ConverterMap map[string]Converter
+}
 
 type RecordModifier struct {
 	convertMap    ConvertMap
@@ -58,7 +70,7 @@ type RecordModifier struct {
 }
 
 func (m *RecordModifier) Modify(r *fluent.TinyFluentRecord) {
-	if m.convertMap != nil {
+	if m.convertMap.ConverterMap != nil {
 		m.convertMap.ConvertTypes(r.Data)
 	}
 	if !m.timeParse {
@@ -93,7 +105,9 @@ func (c *ConvertMap) UnmarshalText(text []byte) error {
 }
 
 func NewConvertMap(config string) ConvertMap {
-	m := make(ConvertMap)
+	var m ConvertMap
+	m.TypeMap = make(map[string]ConvertType)
+	m.ConverterMap = make(map[string]Converter)
 	for _, subdef := range strings.Split(config, ",") {
 		def := strings.SplitN(subdef, ":", 2)
 		if len(def) < 2 {
@@ -102,11 +116,14 @@ func NewConvertMap(config string) ConvertMap {
 		key := def[0]
 		switch def[1] {
 		case "bool":
-			m[key] = convertBool
+			m.TypeMap[key] = ConvertTypeBool
+			m.ConverterMap[key] = convertBool
 		case "integer":
-			m[key] = convertInt
+			m.TypeMap[key] = ConvertTypeInt
+			m.ConverterMap[key] = convertInt
 		case "float":
-			m[key] = convertFloat
+			m.TypeMap[key] = ConvertTypeFloat
+			m.ConverterMap[key] = convertFloat
 		default:
 		}
 	}
@@ -114,11 +131,15 @@ func NewConvertMap(config string) ConvertMap {
 }
 
 func (c ConvertMap) ConvertTypes(data map[string]interface{}) {
-	for key, converter := range c {
+	for key, converter := range c.ConverterMap {
 		if _value, ok := data[key]; ok {
 			switch value := _value.(type) {
 			default:
 				continue
+			case float64:
+				if c.TypeMap[key] == ConvertTypeInt {
+					data[key] = int64(value)
+				}
 			case string:
 				if v, err := converter.Convert(value); err == nil {
 					data[key] = v

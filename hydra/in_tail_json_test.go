@@ -12,13 +12,13 @@ import (
 
 var (
 	JSONLogs = []string{
-		`{"foo":"1","bar":"2","time":"2014-12-31T12:00:01+09:00"}` + "\n",
+		`{"foo":"1","bar":2,"time":"2014-12-31T12:00:01+09:00"}` + "\n",
 		`{"foo":"123","time":"2015-04-29T00:00:00Z"}` + "\n",
 		`{"bar":"baz"}` + "\n",
 		"invalid JSON line\n",
 	}
 	JSONParsed = []map[string]interface{}{
-		{"foo": "1", "bar": "2", "_time": time.Date(2014, time.December, 31, 12, 00, 01, 0, JST)},
+		{"foo": "1", "bar": int64(2), "_time": time.Date(2014, time.December, 31, 12, 00, 01, 0, JST)},
 		{"foo": "123", "_time": time.Date(2015, time.April, 29, 00, 00, 00, 0, time.UTC)},
 		{"bar": "baz"},
 		{"message": "invalid JSON line"},
@@ -35,6 +35,7 @@ func TestTrailJSON(t *testing.T) {
 		File:       file.Name(),
 		Format:     hydra.JSON,
 		FieldName:  "message",
+		ConvertMap: hydra.NewConvertMap("bar:integer"),
 		TimeParse:  true,
 		TimeFormat: hydra.DefaultTimeFormat,
 		TimeKey:    hydra.DefaultTimeKey,
