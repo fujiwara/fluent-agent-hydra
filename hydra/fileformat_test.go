@@ -8,15 +8,17 @@ import (
 )
 
 func TestConvertMap(t *testing.T) {
-	convertMap := hydra.NewConvertMap("user_id:integer,paid:bool,paid_user_amount:float")
+	convertMap := hydra.NewConvertMap("user_id:integer,paid:bool,paid_user_amount:float,bar:integer,baz:integer")
 	data := map[string]interface{}{
 		"user_id":          "12345",
 		"paid":             "true",
 		"paid_user_amount": "1.234",
 		"foo":              "45678",
+		"bar":              float64(67890),
+		"baz":              98765,
 	}
 	convertMap.ConvertTypes(data)
-	if data["user_id"] != 12345 {
+	if data["user_id"] != int64(12345) {
 		t.Errorf("convert integer failed")
 	}
 	if data["paid"] != true {
@@ -27,6 +29,12 @@ func TestConvertMap(t *testing.T) {
 	}
 	if data["foo"] != "45678" {
 		t.Errorf("foo must be not converted %#v", data["foo"])
+	}
+	if data["bar"] != int64(67890) {
+		t.Errorf("bar must be not converted %#v", data["bar"])
+	}
+	if data["baz"] != int64(98765) {
+		t.Errorf("baz must be not converted %#v", data["baz"])
 	}
 }
 
