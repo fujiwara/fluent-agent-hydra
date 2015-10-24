@@ -46,7 +46,7 @@ func (c BoolConverter) Convert(v string) (interface{}, error) {
 }
 
 func (c IntConverter) Convert(v string) (interface{}, error) {
-	return strconv.Atoi(v)
+	return strconv.ParseInt(v, 10, 64)
 }
 
 func (c FloatConverter) Convert(v string) (interface{}, error) {
@@ -137,6 +137,18 @@ func (c ConvertMap) ConvertTypes(data map[string]interface{}) {
 			default:
 				continue
 			case float64:
+				if c.TypeMap[key] == ConvertTypeInt {
+					data[key] = int64(value)
+				}
+			case float32:
+				if c.TypeMap[key] == ConvertTypeInt {
+					data[key] = int64(value)
+				}
+			case int:
+				if c.TypeMap[key] == ConvertTypeInt {
+					data[key] = int64(value)
+				}
+			case int32:
 				if c.TypeMap[key] == ConvertTypeInt {
 					data[key] = int64(value)
 				}

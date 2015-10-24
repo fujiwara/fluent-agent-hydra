@@ -21,9 +21,9 @@ var (
 		"invalid LTSV line\n",
 	}
 	LTSVParsed = []map[string]interface{}{
-		{"foo": 1, "bar": "2", "_time": time.Date(2015, time.May, 26, 11, 22, 33, 0, time.UTC)},
+		{"foo": int64(1), "bar": "2", "_time": time.Date(2015, time.May, 26, 11, 22, 33, 0, time.UTC)},
 		{"foo": "AAA", "bar": "BBB", "_time": time.Date(2013, time.November, 22, 04, 21, 31, 0, JST)},
-		{"foo": 123},
+		{"foo": int64(123)},
 		{"bar": "baz"},
 		{"message": "invalid LTSV line"},
 	}
