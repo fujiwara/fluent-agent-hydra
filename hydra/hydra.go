@@ -84,7 +84,7 @@ func NewFluentRecordSetLTSV(tag string, key string, mod *RecordModifier, buffer 
 func NewFluentRecordSetJSON(tag string, key string, mod *RecordModifier, buffer []byte) *fluent.FluentRecordSet {
 	timestamp := time.Now().Unix()
 	lines := bytes.Split(buffer, LineSeparator)
-	records := make([]fluent.FluentRecordType, 0)
+	records := make([]fluent.FluentRecordType, 0, len(lines))
 	for _, line := range lines {
 		data := make(map[string]interface{})
 		err := json.Unmarshal(line, &data)
