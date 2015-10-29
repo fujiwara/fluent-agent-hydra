@@ -1,9 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"github.com/fujiwara/fluent-agent-hydra/hydra"
 	"os"
-	"fmt"
 )
 
 func main() {
