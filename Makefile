@@ -8,6 +8,9 @@ all: test
 	go get github.com/fujiwara/fluent-agent-hydra/cmd/in-forward-benchmarkd
 	go get github.com/fujiwara/fluent-agent-hydra/cmd/fluent-http-tailf
 
+fmt:
+	go fmt ./...
+
 test:
 	@echo ${GOPATH}
 	cd fluent && go test
