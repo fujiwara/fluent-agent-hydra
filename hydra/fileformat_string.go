@@ -6,16 +6,11 @@ import "fmt"
 
 const _FileFormat_name = "NoneLTSVJSON"
 
-var _FileFormat_index = [...]uint8{4, 8, 12}
+var _FileFormat_index = [...]uint8{0, 4, 8, 12}
 
 func (i FileFormat) String() string {
-	if i < 0 || i >= FileFormat(len(_FileFormat_index)) {
+	if i < 0 || i >= FileFormat(len(_FileFormat_index)-1) {
 		return fmt.Sprintf("FileFormat(%d)", i)
 	}
-	hi := _FileFormat_index[i]
-	lo := uint8(0)
-	if i > 0 {
-		lo = _FileFormat_index[i-1]
-	}
-	return _FileFormat_name[lo:hi]
+	return _FileFormat_name[_FileFormat_index[i]:_FileFormat_index[i+1]]
 }
