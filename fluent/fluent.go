@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"math/rand"
 	"net"
 	"sync"
 	"time"
@@ -126,7 +127,18 @@ func (f *Fluent) Alive() bool {
 
 // connect establishes a new connection using the specified transport.
 func (f *Fluent) connect() (err error) {
-	f.conn, err = net.DialTimeout("tcp", f.Server, f.Config.Timeout)
+	host, port, err := net.SplitHostPort(f.Server)
+	if err != nil {
+		return err
+	}
+	addrs, err := net.LookupHost(host)
+	if err != nil || len(addrs) == 0 {
+		return err
+	}
+	// for DNS round robin
+	resolved := fmt.Sprintf("%s:%s", addrs[rand.Intn(len(addrs))], port)
+	log.Printf("[info] Connect to %s (%s)", f.Server, resolved)
+	f.conn, err = net.DialTimeout("tcp", resolved, f.Config.Timeout)
 	f.recordError(err)
 	return
 }
