@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"math/rand"
 	"net"
 	"sync"
 	"time"
@@ -57,6 +58,8 @@ type Fluent struct {
 	lastErrorAt     time.Time
 	Sent            int64
 }
+
+var Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 // New creates a new Logger.
 func New(config Config) (f *Fluent, err error) {
@@ -126,7 +129,19 @@ func (f *Fluent) Alive() bool {
 
 // connect establishes a new connection using the specified transport.
 func (f *Fluent) connect() (err error) {
-	f.conn, err = net.DialTimeout("tcp", f.Server, f.Config.Timeout)
+	host, port, err := net.SplitHostPort(f.Server)
+	if err != nil {
+		return err
+	}
+	addrs, err := net.LookupHost(host)
+	if err != nil || len(addrs) == 0 {
+		return err
+	}
+	// for DNS round robin
+	n := Rand.Intn(len(addrs))
+	resolved := fmt.Sprintf("%s:%s", addrs[n], port)
+	log.Printf("[info] Connect to %s (%s)", f.Server, resolved)
+	f.conn, err = net.DialTimeout("tcp", resolved, f.Config.Timeout)
 	f.recordError(err)
 	return
 }
@@ -147,6 +162,8 @@ func (f *Fluent) reconnect() {
 			f.mu.Unlock()
 			log.Println("[info] Successfully reconnected to", f.Server)
 			return
+		} else {
+			log.Println("[warning]", err)
 		}
 		waitN := math.Min(float64(i), float64(f.Config.MaxRetry))
 		waitTime := f.Config.RetryWait * e(defaultReconnectWaitIncreRate, waitN)
