@@ -1,7 +1,7 @@
 GIT_VER := $(shell git describe --tags)
 DATE := $(shell date +%Y-%m-%dT%H:%M:%S%z)
 
-.PHONY: test get-deps binary all
+.PHONY: test get-deps binary all fmt clean
 
 all: test
 	go get github.com/fujiwara/fluent-agent-hydra/cmd/fluent-agent-hydra
@@ -10,6 +10,9 @@ all: test
 
 fmt:
 	go fmt ./...
+
+clean:
+	rm -f cmd/fluent-agent-hydra/fluent-agent-hydra cmd/in-forward-benchmarkd/in-forward-benchmarkd cmd/fluent-http-tailf/fluent-http-tailf pkg/*
 
 test:
 	@echo ${GOPATH}
