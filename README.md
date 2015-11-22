@@ -113,6 +113,17 @@ Host = "localhost"
 Port = 24223
 ```
 
+### About special conversion behavior for numerical value
+
+When the `Format` is JSON, fluent-agent-hydra treats a numerical value as float64 even if its type is integer.
+For treating a numerical value as integer, set a column data type integer with the `Types`.
+
+```toml
+Types = "column_name:integer"
+```
+
+Its type is converted to int64.
+
 ## Stats monitor
 
 For enabling stats monitor, specify command line option `-m host:port` or `[Monitor]` section in config file.
