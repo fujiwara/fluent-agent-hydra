@@ -32,9 +32,9 @@ func main() {
 	for {
 		recordSet := <-messageCh
 		for _, record := range recordSet.Records {
-			b, ok := record.Data["message"].([]byte)
+			b, ok := record.GetData("message")
 			if ok {
-				fmt.Println(string(b))
+				fmt.Println(string(b.([]byte)))
 			}
 		}
 	}
