@@ -43,6 +43,7 @@ func main() {
 
 	if showVersion {
 		fmt.Println("version:", version)
+		fmt.Printf("compiler:%s %s\n", runtime.Compiler, runtime.Version())
 		fmt.Println("build:", buildDate)
 		os.Exit(0)
 	}
