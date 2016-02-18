@@ -24,5 +24,5 @@ get-deps:
 	go get -t -d -v ./fluent/ ./hydra/
 
 binary:
-	cd cmd/fluent-agent-hydra && gox -os="linux darwin windows" -arch="amd64 386" -output "../../pkg/{{.Dir}}-${GIT_VER}-{{.OS}}-{{.Arch}}" -ldflags "-X main.version ${GIT_VER} -X main.buildDate ${DATE}"
+	cd cmd/fluent-agent-hydra && gox -os="linux darwin windows" -arch="amd64 386" -output "../../pkg/{{.Dir}}-${GIT_VER}-{{.OS}}-{{.Arch}}" -ldflags "-X main.version=${GIT_VER} -X main.buildDate=${DATE}"
 	cd pkg && find . -name "*${GIT_VER}*" -type f -exec zip {}.zip {} \;
