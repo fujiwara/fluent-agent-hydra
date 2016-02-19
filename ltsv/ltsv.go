@@ -52,6 +52,9 @@ func (w *Encoder) Encode(data interface{}) error {
 				first = false
 			}
 			_, err := fmt.Fprint(w.writer, key, ":")
+			if err != nil {
+				return err
+			}
 			switch v := record[key].(type) {
 			case string:
 				_, err = fmt.Fprint(w.writer, Replacer.Replace(v))
