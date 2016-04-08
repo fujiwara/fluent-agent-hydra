@@ -154,6 +154,10 @@ func (cl *ConfigLogfile) Restrict(c *Config) {
 	}
 }
 
+func (cl *ConfigLogfile) IsStdin() bool {
+	return cl.File == StdinFilename
+}
+
 func (cr *ConfigMonitor) Restrict(c *Config) {
 	if cr.Host == "" {
 		cr.Host = DefaultMonitorHost
