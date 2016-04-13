@@ -39,6 +39,7 @@ type ConfigLogfile struct {
 	File       string
 	FieldName  string
 	Format     FileFormat
+	Regexp     *Regexp
 	ConvertMap ConvertMap `toml:"Types"`
 	TimeParse  bool
 	TimeKey    string

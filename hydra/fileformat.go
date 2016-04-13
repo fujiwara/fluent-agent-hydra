@@ -2,6 +2,7 @@ package hydra
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -35,6 +36,10 @@ type BoolConverter int
 type IntConverter int
 type FloatConverter int
 type TimeConverter string
+
+type Regexp struct {
+	*regexp.Regexp
+}
 
 var (
 	convertBool  BoolConverter
@@ -100,6 +105,12 @@ func (f *FileFormat) UnmarshalText(text []byte) error {
 		return fmt.Errorf("Invalid Format %s", string(text))
 	}
 	return nil
+}
+
+func (r *Regexp) UnmarshalText(text []byte) error {
+	var err error
+	r.Regexp, err = regexp.Compile(string(text))
+	return err
 }
 
 func (c *ConvertMap) UnmarshalText(text []byte) error {

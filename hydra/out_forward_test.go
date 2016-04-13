@@ -27,7 +27,7 @@ func sleep(n int) {
 func prepareRecordSet() *fluent.FluentRecordSet {
 	message := strings.Join(TestMessageLines, "\n")
 	messageBytes := []byte(message)
-	return hydra.NewFluentRecordSet(TestTag, TestFieldName, messageBytes)
+	return hydra.NewFluentRecordSet(TestTag, TestFieldName, hydra.FormatNone, nil, nil, messageBytes)
 }
 
 func newConfigServer(addr string) *hydra.ConfigServer {
