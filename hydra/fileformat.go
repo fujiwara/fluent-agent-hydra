@@ -12,9 +12,10 @@ import (
 type FileFormat int
 
 const (
-	None FileFormat = iota
-	LTSV
-	JSON
+	FormatNone FileFormat = iota
+	FormatLTSV
+	FormatJSON
+	FormatRegexp
 )
 
 const (
@@ -88,11 +89,13 @@ func (m *RecordModifier) Modify(r *fluent.TinyFluentRecord) {
 func (f *FileFormat) UnmarshalText(text []byte) error {
 	switch strings.ToLower(string(text)) {
 	case "ltsv":
-		*f = LTSV
+		*f = FormatLTSV
 	case "json":
-		*f = JSON
+		*f = FormatJSON
+	case "regexp":
+		*f = FormatRegexp
 	case "", "none":
-		*f = None
+		*f = FormatNone
 	default:
 		return fmt.Errorf("Invalid Format %s", string(text))
 	}
