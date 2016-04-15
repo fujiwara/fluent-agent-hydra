@@ -4,7 +4,6 @@ import (
 	"io/ioutil"
 	"os"
 	"reflect"
-	"regexp"
 	"testing"
 	"time"
 
@@ -39,7 +38,7 @@ func TestTrailRegexp(t *testing.T) {
 	file, _ := ioutil.TempFile(tmpdir, "logfile.")
 	defer os.RemoveAll(tmpdir)
 
-	reg := regexp.MustCompile(`^(?P<host>[^ ]*) [^ ]* (?P<user>[^ ]*) \[(?P<time>[^\]]*)\] "(?P<method>\S+)(?: +(?P<path>[^\"]*?)(?: +\S*)?)?" (?P<code>[^ ]*) (?P<size>[^ ]*)(?: "(?P<referer>[^\"]*)" "(?P<agent>[^\"]*)")?$`)
+	reg := hydra.RegexpApache
 	configLogfile := &hydra.ConfigLogfile{
 		Tag:        "test",
 		File:       file.Name(),
@@ -48,7 +47,7 @@ func TestTrailRegexp(t *testing.T) {
 		FieldName:  "message",
 		ConvertMap: hydra.NewConvertMap("size:integer,code:integer"),
 		TimeParse:  true,
-		TimeFormat: "02/Jan/2006:15:04:05 -0700",
+		TimeFormat: hydra.TimeFormatApache,
 		TimeKey:    "time",
 	}
 	msgCh, monCh := hydra.NewChannel()

@@ -32,14 +32,29 @@ type Converter interface {
 	Convert(string) (interface{}, error)
 }
 
+type TimeFormat string
+
 type BoolConverter int
 type IntConverter int
 type FloatConverter int
-type TimeConverter string
+type TimeConverter TimeFormat
 
 type Regexp struct {
 	*regexp.Regexp
 }
+
+var (
+	TimeFormatApache = TimeFormat("02/Jan/2006:15:04:05 -0700")
+	TimeFormatNginx  = TimeFormat("02/Jan/2006:15:04:05 -0700")
+	TimeFormatSyslog = TimeFormat("Jan 02 15:04:05")
+)
+
+var (
+	RegexpApache      = regexp.MustCompile(`^(?P<host>[^ ]*) [^ ]* (?P<user>[^ ]*) \[(?P<time>[^\]]*)\] "(?P<method>\S+)(?: +(?P<path>[^\"]*?)(?: +\S*)?)?" (?P<code>[^ ]*) (?P<size>[^ ]*)(?: "(?P<referer>[^\"]*)" "(?P<agent>[^\"]*)")?$`)
+	RegexpApacheError = regexp.MustCompile(`^\[[^ ]* (?P<time>[^\]]*)\] \[(?P<level>[^\]]*)\](?: \[pid (?P<pid>[^\]]*)\])?( \[client (?P<client>[^\]]*)\])? (?P<message>.*)$`)
+	RegexpNginx       = regexp.MustCompile(`^(?P<remote>[^ ]*) (?P<host>[^ ]*) (?P<user>[^ ]*) \[(?P<time>[^\]]*)\] "(?P<method>\S+)(?: +(?P<path>[^\"]*?)(?: +\S*)?)?" (?P<code>[^ ]*) (?P<size>[^ ]*)(?: "(?P<referer>[^\"]*)" "(?P<agent>[^\"]*)")?$`)
+	RegexpSyslog      = regexp.MustCompile(`(?P<time>[^ ]*\s*[^ ]* [^ ]*) (?P<host>[^ ]*) (?P<ident>[a-zA-Z0-9_\/\.\-]*)(?:\[(?P<pid>[0-9]+)\])?(?:[^\:]*\:)? *(?P<message>.*)$`)
+)
 
 var (
 	convertBool  BoolConverter
@@ -109,7 +124,19 @@ func (f *FileFormat) UnmarshalText(text []byte) error {
 
 func (r *Regexp) UnmarshalText(text []byte) error {
 	var err error
-	r.Regexp, err = regexp.Compile(string(text))
+	s := string(text)
+	switch strings.ToLower(s) {
+	case "apache":
+		r.Regexp = RegexpApache
+	case "apache_error":
+		r.Regexp = RegexpApacheError
+	case "nginx":
+		r.Regexp = RegexpNginx
+	case "syslog":
+		r.Regexp = RegexpSyslog
+	default:
+		r.Regexp, err = regexp.Compile(s)
+	}
 	return err
 }
 
@@ -173,4 +200,18 @@ func (c ConvertMap) ConvertTypes(data map[string]interface{}) {
 			}
 		}
 	}
+}
+
+func (t *TimeFormat) UnmarshalText(text []byte) error {
+	switch strings.ToLower(string(text)) {
+	case "apache":
+		*t = TimeFormatApache
+	case "nginx":
+		*t = TimeFormatApache
+	case "syslog":
+		*t = TimeFormatSyslog
+	default:
+		*t = TimeFormat(text)
+	}
+	return nil
 }

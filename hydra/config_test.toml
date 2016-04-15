@@ -37,6 +37,14 @@ TimeParse = true
 TimeKey = "timestamp"
 TimeFormat = "02/Jan/2006:15:04:05 Z0700"
 
+[[Logs]]
+Tag = "regexp"
+File = "/tmp/regexp.log"
+Format = "regexp"
+Regexp = "apache"
+TimeParse = true
+TimeFormat = "apache"
+
 [Monitor]
 Host = "127.0.0.2"
 Port = 24223
