@@ -1,0 +1,20 @@
+hydra:
+  build: "hydra"
+  net: "host"
+  volumes:
+    - /data:/data
+
+receiver:
+  build: receiver
+  net: "host"
+  volumes:
+    - /data:/data
+  environment:
+    PORT: 24224
+
+fluentd:
+  build: "fluentd"
+  net: "host"
+  volumes:
+    - /data:/data
+
