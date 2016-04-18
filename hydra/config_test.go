@@ -36,7 +36,7 @@ func TestReadConfig(t *testing.T) {
 		t.Errorf("invalid Servers[1] got %#v", config.Servers[1])
 	}
 
-	if len(config.Logs) != 4 {
+	if len(config.Logs) != 5 {
 		t.Errorf("invalid Logs got %#v", config.Logs)
 	}
 	if c := config.Logs[0]; c.Tag != "foo.tag1" ||
@@ -67,6 +67,15 @@ func TestReadConfig(t *testing.T) {
 		c.TimeKey != "timestamp" ||
 		c.TimeFormat != "02/Jan/2006:15:04:05 Z0700" {
 		t.Errorf("invalid Logs[3] got %#v", c)
+	}
+
+	if c := config.Logs[4]; c.Tag != "foo.regexp" ||
+		c.File != "/tmp/regexp.log" ||
+		c.Format != hydra.FormatRegexp ||
+		c.TimeParse != true ||
+		c.TimeKey != "time" ||
+		c.TimeFormat != hydra.TimeFormatApache {
+		t.Errorf("invalid Logs[4] got %#v", c)
 	}
 
 	if config.Receiver.Host != "localhost" || config.Receiver.Port != 24224 {

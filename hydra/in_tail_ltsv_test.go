@@ -37,7 +37,7 @@ func TestTrailLTSV(t *testing.T) {
 	configLogfile := &hydra.ConfigLogfile{
 		Tag:        "test",
 		File:       file.Name(),
-		Format:     hydra.LTSV,
+		Format:     hydra.FormatLTSV,
 		ConvertMap: hydra.NewConvertMap("foo:integer"),
 		FieldName:  "message",
 		TimeParse:  true,

@@ -12,54 +12,43 @@ import (
 )
 
 var (
-	JSONLogs = []string{
-		`{"foo":"1","bar":"2","time":"2014-12-31T12:00:01+09:00"}` + "\n",
-		`{"foo":"1","bar":2,"time":"2014-12-31T12:00:01+09:00"}` + "\n",
-		`{"foo":"123","time":"2015-04-29T00:00:00Z"}` + "\n",
-		`{"bar":"baz"}` + "\n",
-		"invalid JSON line\n",
+	RegexpLogs = []string{
+		`192.168.0.1 - - [28/Feb/2013:12:00:00 +0900] "GET / HTTP/1.1" 200 777 "-" "Opera/12.0"` + "\n",
+		"invalid regexp line\n",
 	}
-	JSONParsed = []map[string]interface{}{
+	RegexpParsed = []map[string]interface{}{
 		{
-			"foo":   "1",
-			"bar":   int64(2),
-			"time":  "2014-12-31T12:00:01+09:00",
-			"_time": time.Date(2014, time.December, 31, 12, 00, 01, 0, JST),
+			"user":    "-",
+			"method":  "GET",
+			"code":    int64(200),
+			"size":    int64(777),
+			"host":    "192.168.0.1",
+			"path":    "/",
+			"referer": "-",
+			"agent":   "Opera/12.0",
+			"time":    "28/Feb/2013:12:00:00 +0900",
+			"_time":   time.Date(2013, time.February, 28, 12, 00, 00, 0, JST),
 		},
-		{
-			"foo":   "1",
-			"bar":   int64(2),
-			"time":  "2014-12-31T12:00:01+09:00",
-			"_time": time.Date(2014, time.December, 31, 12, 00, 01, 0, JST),
-		},
-		{
-			"foo":   "123",
-			"time":  "2015-04-29T00:00:00Z",
-			"_time": time.Date(2015, time.April, 29, 00, 00, 00, 0, time.UTC),
-		},
-		{
-			"bar": "baz",
-		},
-		{
-			"message": "invalid JSON line",
-		},
+		{"message": "invalid regexp line"},
 	}
 )
 
-func TestTrailJSON(t *testing.T) {
+func TestTrailRegexp(t *testing.T) {
 	tmpdir, _ := ioutil.TempDir(os.TempDir(), "hydra-test")
 	file, _ := ioutil.TempFile(tmpdir, "logfile.")
 	defer os.RemoveAll(tmpdir)
 
+	reg := hydra.RegexpApache
 	configLogfile := &hydra.ConfigLogfile{
 		Tag:        "test",
 		File:       file.Name(),
-		Format:     hydra.FormatJSON,
+		Format:     hydra.FormatRegexp,
+		Regexp:     &hydra.Regexp{Regexp: reg},
 		FieldName:  "message",
-		ConvertMap: hydra.NewConvertMap("bar:integer"),
+		ConvertMap: hydra.NewConvertMap("size:integer,code:integer"),
 		TimeParse:  true,
-		TimeFormat: hydra.DefaultTimeFormat,
-		TimeKey:    hydra.DefaultTimeKey,
+		TimeFormat: hydra.TimeFormatApache,
+		TimeKey:    "time",
 	}
 	msgCh, monCh := hydra.NewChannel()
 	watcher, err := hydra.NewWatcher()
@@ -74,11 +63,11 @@ func TestTrailJSON(t *testing.T) {
 	go watcher.Run()
 	go func() {
 		time.Sleep(1 * time.Second)
-		fileWriter(t, file, JSONLogs)
+		fileWriter(t, file, RegexpLogs)
 	}()
 
 	i := 0
-	for i < len(JSONLogs) {
+	for i < len(RegexpLogs) {
 		recordSet := <-msgCh
 		if recordSet.Tag != "test" {
 			t.Errorf("got %v\nwant %v", recordSet.Tag, "test")
@@ -86,7 +75,7 @@ func TestTrailJSON(t *testing.T) {
 		for _, _record := range recordSet.Records {
 			record := _record.(*fluent.TinyFluentRecord)
 			d := record.GetAllData()
-			e := JSONParsed[i]
+			e := RegexpParsed[i]
 			if ts, ok := e["_time"]; ok {
 				if ts.(time.Time).Unix() != record.Timestamp {
 					t.Errorf("expected record[%d] timestamp %s got %s", i, ts, record.Timestamp)
@@ -94,7 +83,7 @@ func TestTrailJSON(t *testing.T) {
 				delete(e, "_time")
 			}
 			if !reflect.DeepEqual(e, d) {
-				t.Errorf("expected %#v got %#v", e, d)
+				t.Errorf("expected %#v got %#v", d, e)
 			}
 			i++
 		}

@@ -26,6 +26,7 @@ type InTail struct {
 	eventCh        chan fsnotify.Event
 	format         FileFormat
 	recordModifier *RecordModifier
+	regexp         *Regexp
 }
 
 type Watcher struct {
@@ -122,6 +123,7 @@ func NewInTail(config *ConfigLogfile, watcher *Watcher, messageCh chan *fluent.F
 		eventCh:        eventCh,
 		format:         config.Format,
 		recordModifier: modifier,
+		regexp:         config.Regexp,
 	}
 	return t, nil
 }
@@ -155,6 +157,7 @@ func (t *InTail) newTrailFile(startPos int64) *File {
 			f.FieldName = t.fieldName
 			f.Format = t.format
 			f.RecordModifier = t.recordModifier
+			f.Regexp = t.regexp
 			log.Println("[info] Trailing file:", f.Path, "tag:", f.Tag, "format:", t.format)
 			t.monitorCh <- f.UpdateStat()
 			return f

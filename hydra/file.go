@@ -33,6 +33,7 @@ type File struct {
 	FileStat       *FileStat
 	Format         FileFormat
 	RecordModifier *RecordModifier
+	Regexp         *Regexp
 }
 
 func openFile(path string, startPos int64) (*File, error) {
@@ -55,7 +56,8 @@ func openFile(path string, startPos int64) (*File, error) {
 		stat,
 		"",
 		&FileStat{},
-		None,
+		FormatNone,
+		nil,
 		nil,
 	}
 
@@ -120,14 +122,7 @@ func (f *File) tailAndSend(messageCh chan *fluent.FluentRecordSet, monitorCh cha
 				copy(f.contBuf, f.readBuf[blockLen+1:n])
 			}
 		}
-		switch f.Format {
-		case LTSV:
-			messageCh <- NewFluentRecordSetLTSV(f.Tag, f.FieldName, f.RecordModifier, sendBuf)
-		case JSON:
-			messageCh <- NewFluentRecordSetJSON(f.Tag, f.FieldName, f.RecordModifier, sendBuf)
-		default:
-			messageCh <- NewFluentRecordSet(f.Tag, f.FieldName, sendBuf)
-		}
+		messageCh <- NewFluentRecordSet(f.Tag, f.FieldName, f.Format, f.RecordModifier, f.Regexp, sendBuf)
 		monitorCh <- f.UpdateStat()
 	}
 }

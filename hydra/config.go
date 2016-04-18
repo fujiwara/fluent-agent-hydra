@@ -15,8 +15,9 @@ const (
 	DefaultFieldName         = "message"
 	DefaultMaxBufferMessages = 1024 * 1024
 	DefaultTimeKey           = "time"
-	DefaultTimeFormat        = time.RFC3339
 )
+
+var DefaultTimeFormat = TimeFormat(time.RFC3339)
 
 type Config struct {
 	TagPrefix        string
@@ -39,10 +40,11 @@ type ConfigLogfile struct {
 	File       string
 	FieldName  string
 	Format     FileFormat
+	Regexp     *Regexp
 	ConvertMap ConvertMap `toml:"Types"`
 	TimeParse  bool
 	TimeKey    string
-	TimeFormat string
+	TimeFormat TimeFormat
 }
 
 type ConfigReceiver struct {

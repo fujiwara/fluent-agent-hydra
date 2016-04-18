@@ -21,7 +21,7 @@ func createRecordsetSampleLTSV(n int) string {
 
 func TestNewFluentRecordSetLTSV(t *testing.T) {
 	buf := []byte(createRecordsetSampleLTSV(1))
-	record := hydra.NewFluentRecordSetLTSV("dummy", "message", nil, buf)
+	record := hydra.NewFluentRecordSet("dummy", "message", hydra.FormatLTSV, nil, nil, buf)
 	if record.Tag != "dummy" {
 		t.Errorf("invalid tag: %s", record.Tag)
 	}
@@ -32,7 +32,7 @@ func TestNewFluentRecordSetLTSV(t *testing.T) {
 
 func TestNewFluentRecordSetJSON(t *testing.T) {
 	buf := []byte(createRecordsetSampleJSON(1))
-	record := hydra.NewFluentRecordSetJSON("dummy", "message", nil, buf)
+	record := hydra.NewFluentRecordSet("dummy", "message", hydra.FormatJSON, nil, nil, buf)
 	if record.Tag != "dummy" {
 		t.Errorf("invalid tag: %s", record.Tag)
 	}
@@ -45,7 +45,7 @@ func BenchmarkNewFluentRecordSetLTSV(b *testing.B) {
 	b.ResetTimer()
 	buf := []byte(createRecordsetSampleLTSV(10))
 	for i := 0; i < b.N; i++ {
-		_ = hydra.NewFluentRecordSetLTSV("dummy", "message", nil, buf)
+		_ = hydra.NewFluentRecordSet("dummy", "message", hydra.FormatLTSV, nil, nil, buf)
 	}
 }
 
@@ -53,6 +53,6 @@ func BenchmarkNewFluentRecordSetJSON(b *testing.B) {
 	b.ResetTimer()
 	buf := []byte(createRecordsetSampleJSON(10))
 	for i := 0; i < b.N; i++ {
-		_ = hydra.NewFluentRecordSetJSON("dummy", "message", nil, buf)
+		_ = hydra.NewFluentRecordSet("dummy", "message", hydra.FormatJSON, nil, nil, buf)
 	}
 }
