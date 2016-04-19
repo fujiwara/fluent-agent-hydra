@@ -10,7 +10,7 @@ do
         echo "`date +%Y-%m-%d-%H:%M:%S`: benchmark $t $r/sec"
         rm -f "$dir/bench.$t.log"
         sleep 1
-        go-dummer-simple -r "$r" -s 1 -i $t.log -o "$dir/bench.$t.log"
+        go-dummer-simple -r "$r" -s 10 -i $t.log -o "$dir/bench.$t.log"
         echo "`date +%Y-%m-%d-%H:%M:%S`: done. wrote `wc -l $dir/bench.$t.log` lines"
         sleep 5
     done

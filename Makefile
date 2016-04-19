@@ -8,6 +8,9 @@ all: test
 	go get github.com/fujiwara/fluent-agent-hydra/cmd/in-forward-benchmarkd
 	go get github.com/fujiwara/fluent-agent-hydra/cmd/fluent-http-tailf
 
+install:
+	cd cmd/fluent-agent-hydra && go build -ldflags "-X main.version=${GIT_VER} -X main.buildDate=${DATE}" && install fluent-agent-hydra ${GOPATH}/bin
+
 fmt:
 	go fmt ./...
 
