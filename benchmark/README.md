@@ -3,6 +3,8 @@
 * AWS EC2 c4.4xlarge
   * Amazon Linux AMI release 2016.03
   * Linux 4.1.10-17.31.amzn1.x86_64
+  * Docker version 1.9.1
+    * container base image: alpine/latest (alpine/3.3)
 * fluentd 0.12.22
   * ruby 2.2.4p230 (2015-12-16 revision 53155) [x86_64-linux-musl]
 * fluent-agent-hydra v0.2.0
