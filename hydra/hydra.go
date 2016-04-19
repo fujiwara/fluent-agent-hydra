@@ -15,6 +15,7 @@ const (
 	LineSeparatorStr        = "\n"
 	LTSVColSeparatorStr     = "\t"
 	LTSVDataSeparatorStr    = ":"
+	StdinFilename           = "-"
 )
 
 var (

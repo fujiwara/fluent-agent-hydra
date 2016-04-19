@@ -1,6 +1,7 @@
 package hydra
 
 import (
+	"bufio"
 	"errors"
 	"io"
 	"log"
@@ -27,6 +28,7 @@ type InTail struct {
 	format         FileFormat
 	recordModifier *RecordModifier
 	regexp         *Regexp
+	position       int64
 }
 
 type Watcher struct {
@@ -99,38 +101,53 @@ func Rel2Abs(filename string) (string, error) {
 }
 
 func NewInTail(config *ConfigLogfile, watcher *Watcher, messageCh chan *fluent.FluentRecordSet, monitorCh chan Stat) (*InTail, error) {
-	filename, err := Rel2Abs(config.File)
-	if err != nil {
-		return nil, err
-	}
-	eventCh, err := watcher.WatchFile(filename)
-	if err != nil {
-		return nil, err
-	}
 	modifier := &RecordModifier{
 		convertMap:    config.ConvertMap,
 		timeParse:     config.TimeParse,
 		timeKey:       config.TimeKey,
 		timeConverter: TimeConverter(config.TimeFormat),
 	}
-	t := &InTail{
-		filename:       filename,
-		tag:            config.Tag,
-		fieldName:      config.FieldName,
-		lastReadAt:     time.Now(),
-		messageCh:      messageCh,
-		monitorCh:      monitorCh,
-		eventCh:        eventCh,
-		format:         config.Format,
-		recordModifier: modifier,
-		regexp:         config.Regexp,
+	if config.IsStdin() {
+		return &InTail{
+			filename:       StdinFilename,
+			tag:            config.Tag,
+			fieldName:      config.FieldName,
+			messageCh:      messageCh,
+			monitorCh:      monitorCh,
+			format:         config.Format,
+			recordModifier: modifier,
+		}, nil
+	} else {
+		filename, err := Rel2Abs(config.File)
+		if err != nil {
+			return nil, err
+		}
+		eventCh, err := watcher.WatchFile(filename)
+		if err != nil {
+			return nil, err
+		}
+		return &InTail{
+			filename:       filename,
+			tag:            config.Tag,
+			fieldName:      config.FieldName,
+			lastReadAt:     time.Now(),
+			messageCh:      messageCh,
+			monitorCh:      monitorCh,
+			eventCh:        eventCh,
+			format:         config.Format,
+			recordModifier: modifier,
+			regexp:         config.Regexp,
+		}, nil
 	}
-	return t, nil
 }
 
 // InTail follow the tail of file and post BulkMessage to channel.
 func (t *InTail) Run() {
 	defer log.Println("[error] Aborted to in_tail.run()")
+	if t.eventCh == nil {
+		t.TailStdin()
+		return
+	}
 
 	log.Println("[info] Trying trail file", t.filename)
 	f := t.newTrailFile(SEEK_TAIL)
@@ -209,4 +226,27 @@ func (t *InTail) watchFileEvent(f *File) error {
 		return err
 	}
 	return nil
+}
+
+func (t *InTail) TailStdin() {
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		b := scanner.Bytes()
+		t.position += int64(len(b) + 1)
+		t.messageCh <- NewFluentRecordSet(t.tag, t.fieldName, t.format, t.recordModifier, t.regexp, b)
+		t.monitorCh <- &FileStat{
+			File:     StdinFilename,
+			Position: t.position,
+			Tag:      t.tag,
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		log.Println("reading stdin:", err)
+		t.monitorCh <- &FileStat{
+			File:     StdinFilename,
+			Position: t.position,
+			Tag:      t.tag,
+			Error:    err.Error(),
+		}
+	}
 }
