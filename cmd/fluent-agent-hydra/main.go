@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"syscall"
+	"time"
 
 	"github.com/fujiwara/fluent-agent-hydra/fluent"
 	"github.com/fujiwara/fluent-agent-hydra/hydra"
@@ -61,8 +62,8 @@ func main() {
 	}
 
 	var messageCh chan *fluent.FluentRecordSet
-	done := make(chan os.Signal, 1)
-	signal.Notify(done, trapSignals...)
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, trapSignals...)
 	if configFile != "" {
 		config, err := hydra.ReadConfig(configFile)
 		if err != nil {
@@ -76,11 +77,23 @@ func main() {
 	} else {
 		usage()
 	}
-	sig := <-done
-	log.Println("[info] SIGNAL", sig, "exit.")
-	hydra.Shutdown(messageCh)
-
+	sig := <-sigCh
+	log.Println("[info] SIGNAL", sig, "shutting down")
 	pprof.StopCPUProfile()
+
+	go func() {
+		time.Sleep(1 * time.Second) // at least wait 1 sec
+		sig, ok := <-sigCh
+		if !ok {
+			return // closed
+		}
+		log.Println("[warn] SIGNAL", sig, "before shutdown completed. aborted")
+		os.Exit(1)
+	}()
+
+	// wait for graceful shutdown
+	hydra.Shutdown(messageCh)
+	close(sigCh)
 	os.Exit(0)
 }
 
