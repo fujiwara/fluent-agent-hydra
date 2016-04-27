@@ -158,7 +158,15 @@ func (t *InTail) Run() {
 	}
 
 	log.Println("[info] Trying trail file", t.filename)
-	f := t.newTrailFile(SEEK_TAIL)
+	f, err := t.newTrailFile(SEEK_TAIL)
+	if err != nil {
+		if _, ok := err.(*ShutdownType); ok {
+			log.Println("[info]", err)
+		} else {
+			log.Println("[error]", err)
+		}
+		return
+	}
 	for {
 		for {
 			err := t.watchFileEvent(f)
@@ -173,11 +181,20 @@ func (t *InTail) Run() {
 			}
 		}
 		// re open file
-		f = t.newTrailFile(SEEK_HEAD)
+		var err error
+		f, err = t.newTrailFile(SEEK_HEAD)
+		if err != nil {
+			if _, ok := err.(*ShutdownType); ok {
+				log.Println("[info]", err)
+			} else {
+				log.Println("[error]", err)
+			}
+			return
+		}
 	}
 }
 
-func (t *InTail) newTrailFile(startPos int64) *File {
+func (t *InTail) newTrailFile(startPos int64) (*File, error) {
 	seekTo := startPos
 	first := true
 	for {
@@ -190,7 +207,7 @@ func (t *InTail) newTrailFile(startPos int64) *File {
 			f.Regexp = t.regexp
 			log.Println("[info] Trailing file:", f.Path, "tag:", f.Tag, "format:", t.format)
 			t.monitorCh <- f.UpdateStat()
-			return f
+			return f, nil
 		}
 		t.monitorCh <- &FileStat{
 			Tag:      t.tag,
@@ -203,7 +220,11 @@ func (t *InTail) newTrailFile(startPos int64) *File {
 		}
 		first = false
 		seekTo = SEEK_HEAD
-		time.Sleep(OpenRetryInterval)
+		select {
+		case <-ControlCh:
+			return nil, &ShutdownType{"shutdown in_tail: " + t.filename}
+		case <-time.NewTimer(OpenRetryInterval).C:
+		}
 	}
 }
 
