@@ -2,11 +2,13 @@ package hydra
 
 import (
 	"fmt"
-	"github.com/fujiwara/fluent-agent-hydra/fluent"
 	"io"
 	"log"
 	"net"
+	"strings"
 	"time"
+
+	"github.com/fujiwara/fluent-agent-hydra/fluent"
 )
 
 const (
@@ -45,11 +47,24 @@ func NewInForward(config *ConfigReceiver, messageCh chan *fluent.FluentRecordSet
 }
 
 func (f *InForward) Run() {
+	InputProcessGroup.Add(1)
+	defer InputProcessGroup.Done()
 	go f.feed()
+	go func() {
+		<-ControlCh
+		f.listener.Close()
+	}()
 	for {
 		conn, err := f.listener.Accept()
 		if err != nil {
-			log.Println("[error] accept error", err)
+			if strings.Index(err.Error(), "use of closed network connection") != -1 {
+				log.Println("[info] shutdown in_forward accept")
+				// closed
+				return
+			} else {
+				log.Println("[error] accept error", err)
+			}
+			continue
 		}
 		f.monitorCh <- &ReceiverStat{
 			Connections: 1,
@@ -72,12 +87,20 @@ func (f *InForward) feed() {
 }
 
 func (f *InForward) handleConn(conn net.Conn) {
+	InputProcessGroup.Add(1)
+	defer InputProcessGroup.Done()
 	defer func() {
 		f.monitorCh <- &ReceiverStat{
 			Connections: -1,
 		}
 	}()
 	for {
+		select {
+		case <-ControlCh:
+			log.Println("shutdown in_forward connection", conn)
+			return
+		default:
+		}
 		recordSets, err := fluent.DecodeEntries(conn)
 		if err == io.EOF {
 			conn.Close()

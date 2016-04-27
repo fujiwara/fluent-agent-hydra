@@ -10,6 +10,7 @@ import (
 	"runtime/pprof"
 	"syscall"
 
+	"github.com/fujiwara/fluent-agent-hydra/fluent"
 	"github.com/fujiwara/fluent-agent-hydra/hydra"
 )
 
@@ -59,6 +60,7 @@ func main() {
 		pprof.StartCPUProfile(f)
 	}
 
+	var messageCh chan *fluent.FluentRecordSet
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, trapSignals...)
 	if configFile != "" {
@@ -67,15 +69,17 @@ func main() {
 			log.Println("Can't load config", err)
 			os.Exit(2)
 		}
-		run(config)
+		messageCh = run(config)
 	} else if args := flag.Args(); len(args) >= 3 {
 		config := hydra.NewConfigByArgs(args, fieldName, monitorAddr)
-		run(config)
+		messageCh = run(config)
 	} else {
 		usage()
 	}
 	sig := <-done
 	log.Println("[info] SIGNAL", sig, "exit.")
+	hydra.Shutdown(messageCh)
+
 	pprof.StopCPUProfile()
 	os.Exit(0)
 }
@@ -90,7 +94,7 @@ func usage() {
 	os.Exit(1)
 }
 
-func run(config *hydra.Config) {
+func run(config *hydra.Config) chan *fluent.FluentRecordSet {
 	messageCh, monitorCh := hydra.NewChannel()
 
 	if config.ReadBufferSize > 0 {
@@ -147,4 +151,5 @@ func run(config *hydra.Config) {
 			go inForward.Run()
 		}
 	}
+	return messageCh
 }

@@ -52,12 +52,18 @@ func NewWatcher() (*Watcher, error) {
 }
 
 func (w *Watcher) Run() {
+	InputProcessGroup.Add(1)
+	defer InputProcessGroup.Done()
+
 	if len(w.watchingFile) == 0 {
 		log.Println("[error] no watching file. watcher aborted.")
 		return
 	}
 	for {
 		select {
+		case <-ControlCh:
+			log.Println("[info] shutdown file watcher")
+			return
 		case ev := <-w.watcher.Events:
 			if eventCh, ok := w.watchingFile[ev.Name]; ok {
 				eventCh <- ev
@@ -143,7 +149,9 @@ func NewInTail(config *ConfigLogfile, watcher *Watcher, messageCh chan *fluent.F
 
 // InTail follow the tail of file and post BulkMessage to channel.
 func (t *InTail) Run() {
-	defer log.Println("[error] Aborted to in_tail.run()")
+	InputProcessGroup.Add(1)
+	defer InputProcessGroup.Done()
+
 	if t.eventCh == nil {
 		t.TailStdin()
 		return
@@ -155,8 +163,13 @@ func (t *InTail) Run() {
 		for {
 			err := t.watchFileEvent(f)
 			if err != nil {
-				log.Println("[warning]", err)
-				break
+				if _, ok := err.(*ShutdownType); ok {
+					log.Println("[info]", err)
+					return
+				} else {
+					log.Println("[warning]", err)
+					break
+				}
 			}
 		}
 		// re open file
@@ -196,6 +209,8 @@ func (t *InTail) newTrailFile(startPos int64) *File {
 
 func (t *InTail) watchFileEvent(f *File) error {
 	select {
+	case <-ControlCh:
+		return &ShutdownType{"shutdown in_tail: " + f.Path}
 	case ev := <-t.eventCh:
 		if ev.Op&fsnotify.Write == fsnotify.Write {
 			break

@@ -42,9 +42,13 @@ func NewOutForward(configServers []*ConfigServer, messageCh chan *fluent.FluentR
 }
 
 func (f *OutForward) Run() {
+	OutputProcessGroup.Add(1)
+	defer OutputProcessGroup.Done()
+
 	for i, _ := range f.loggers {
 		go f.checkServerHealth(i)
 	}
+
 	for {
 		err := f.outForwardRecieve()
 		if err != nil {
@@ -56,7 +60,6 @@ func (f *OutForward) Run() {
 			}
 		}
 	}
-
 }
 
 func (f *OutForward) outForwardRecieve() error {
@@ -65,7 +68,7 @@ func (f *OutForward) outForwardRecieve() error {
 		for _, logger := range f.loggers {
 			logger.Shutdown()
 		}
-		return &ShutdownType{"Shutdown forward process"}
+		return &ShutdownType{"shutdown out_forward"}
 	}
 	first := true
 	packed, err := recordSet.PackAsPackedForward()

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/fujiwara/fluent-agent-hydra/fluent"
@@ -20,6 +21,9 @@ const (
 
 var (
 	LineSeparator = []byte{'\n'}
+	ControlCh     = make(chan interface{})
+	InputProcessGroup   sync.WaitGroup
+	OutputProcessGroup  sync.WaitGroup
 )
 
 type ShutdownType struct {
@@ -111,4 +115,12 @@ func NewFluentRecordRegexp(key string, line []byte, r *Regexp) *fluent.TinyFluen
 		}
 	}
 	return &fluent.TinyFluentRecord{Data: data}
+}
+
+func Shutdown(messageCh chan *fluent.FluentRecordSet) error {
+	close(ControlCh)
+	InputProcessGroup.Wait()
+	close(messageCh)
+	OutputProcessGroup.Wait()
+	return nil
 }
