@@ -44,17 +44,17 @@ func TestTrailLTSV(t *testing.T) {
 		TimeFormat: hydra.DefaultTimeFormat,
 		TimeKey:    hydra.DefaultTimeKey,
 	}
-	msgCh, monCh := hydra.NewChannel()
+	c := hydra.NewContext()
 	watcher, err := hydra.NewWatcher()
 	if err != nil {
 		t.Error(err)
 	}
-	inTail, err := hydra.NewInTail(configLogfile, watcher, msgCh, monCh)
+	inTail, err := hydra.NewInTail(configLogfile, watcher)
 	if err != nil {
 		t.Error(err)
 	}
-	go inTail.Run()
-	go watcher.Run()
+	c.RunProcess(inTail)
+	c.RunProcess(watcher)
 	go func() {
 		time.Sleep(1 * time.Second)
 		fileWriter(t, file, LTSVLogs)
@@ -62,7 +62,7 @@ func TestTrailLTSV(t *testing.T) {
 
 	i := 0
 	for i < len(LTSVLogs) {
-		recordSet := <-msgCh
+		recordSet := <-c.MessageCh
 		if recordSet.Tag != "test" {
 			t.Errorf("got %v\nwant %v", recordSet.Tag, "test")
 		}

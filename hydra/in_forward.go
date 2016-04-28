@@ -24,7 +24,7 @@ type InForward struct {
 	messageQueue *MessageQueue
 }
 
-func NewInForward(config *ConfigReceiver, messageCh chan *fluent.FluentRecordSet, monitorCh chan Stat) (*InForward, error) {
+func NewInForward(config *ConfigReceiver) (*InForward, error) {
 	addr := fmt.Sprintf("%s:%d", config.Host, config.Port)
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -35,23 +35,27 @@ func NewInForward(config *ConfigReceiver, messageCh chan *fluent.FluentRecordSet
 	f := &InForward{
 		listener:     l,
 		Addr:         l.Addr(),
-		messageCh:    messageCh,
-		monitorCh:    monitorCh,
 		messageQueue: NewMessageQueue(config.MaxBufferMessages),
-	}
-	monitorCh <- &ReceiverStat{
-		Address:           f.Addr.String(),
-		MaxBufferMessages: int64(config.MaxBufferMessages),
 	}
 	return f, nil
 }
 
-func (f *InForward) Run() {
-	InputProcessGroup.Add(1)
-	defer InputProcessGroup.Done()
+func (f *InForward) Run(c *Context) {
+	c.InputProcess.Add(1)
+	defer c.InputProcess.Done()
+	f.messageCh = c.MessageCh
+	f.monitorCh = c.MonitorCh
+
+	c.StartProcess.Done()
+
+	f.monitorCh <- &ReceiverStat{
+		Address:           f.Addr.String(),
+		MaxBufferMessages: int64(f.messageQueue.maxMessages),
+	}
+
 	go f.feed()
 	go func() {
-		<-ControlCh
+		<-c.ControlCh
 		f.listener.Close()
 	}()
 	for {
@@ -69,7 +73,7 @@ func (f *InForward) Run() {
 		f.monitorCh <- &ReceiverStat{
 			Connections: 1,
 		}
-		go f.handleConn(conn)
+		go f.handleConn(conn, c)
 	}
 }
 
@@ -86,17 +90,18 @@ func (f *InForward) feed() {
 	}
 }
 
-func (f *InForward) handleConn(conn net.Conn) {
-	InputProcessGroup.Add(1)
-	defer InputProcessGroup.Done()
+func (f *InForward) handleConn(conn net.Conn, c *Context) {
+	c.InputProcess.Add(1)
+	defer c.InputProcess.Done()
 	defer func() {
 		f.monitorCh <- &ReceiverStat{
 			Connections: -1,
 		}
 	}()
+
 	for {
 		select {
-		case <-ControlCh:
+		case <-c.ControlCh:
 			log.Println("shutdown in_forward connection", conn)
 			return
 		default:

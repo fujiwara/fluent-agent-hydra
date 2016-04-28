@@ -11,7 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/fujiwara/fluent-agent-hydra/fluent"
 	"github.com/fujiwara/fluent-agent-hydra/hydra"
 )
 
@@ -61,24 +60,34 @@ func main() {
 		pprof.StartCPUProfile(f)
 	}
 
-	var messageCh chan *fluent.FluentRecordSet
+	var (
+		config *hydra.Config
+		err    error
+	)
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, trapSignals...)
 	if configFile != "" {
-		config, err := hydra.ReadConfig(configFile)
+		config, err = hydra.ReadConfig(configFile)
 		if err != nil {
 			log.Println("Can't load config", err)
 			os.Exit(2)
 		}
-		messageCh = run(config)
 	} else if args := flag.Args(); len(args) >= 3 {
-		config := hydra.NewConfigByArgs(args, fieldName, monitorAddr)
-		messageCh = run(config)
+		config = hydra.NewConfigByArgs(args, fieldName, monitorAddr)
 	} else {
 		usage()
 	}
+
+	context := hydra.Run(config)
+	go func() {
+		context.InputProcess.Wait()
+		sigCh <- hydra.NewSignal("all input processes terminated")
+	}()
+
+	// waiting for all input processes are terminated or got os signal
 	sig := <-sigCh
-	log.Println("[info] SIGNAL", sig, "shutting down")
+
+	log.Println("[info]", sig, "shutting down")
 	pprof.StopCPUProfile()
 
 	go func() {
@@ -91,9 +100,7 @@ func main() {
 		os.Exit(1)
 	}()
 
-	// wait for graceful shutdown
-	hydra.Shutdown(messageCh)
-	close(sigCh)
+	context.Shutdown()
 	os.Exit(0)
 }
 
@@ -105,64 +112,4 @@ func usage() {
 	fmt.Println("")
 	flag.PrintDefaults()
 	os.Exit(1)
-}
-
-func run(config *hydra.Config) chan *fluent.FluentRecordSet {
-	messageCh, monitorCh := hydra.NewChannel()
-
-	if config.ReadBufferSize > 0 {
-		hydra.ReadBufferSize = config.ReadBufferSize
-		log.Println("[info] set ReadBufferSize", hydra.ReadBufferSize)
-	}
-
-	// start monitor server
-	monitor, err := hydra.NewMonitor(config, monitorCh)
-	if err != nil {
-		log.Println("[error] Couldn't start monitor server.", err)
-	} else {
-		go monitor.Run()
-	}
-
-	// start out_forward
-	outForward, err := hydra.NewOutForward(config.Servers, messageCh, monitorCh)
-	if err != nil {
-		log.Println("[error]", err)
-	} else {
-		outForward.RoundRobin = config.ServerRoundRobin
-		if outForward.RoundRobin {
-			log.Println("[info] ServerRoundRobin enabled")
-		}
-		go outForward.Run()
-	}
-
-	// start watcher && in_tail
-	if len(config.Logs) > 0 {
-		watcher, err := hydra.NewWatcher()
-		if err != nil {
-			log.Println("[error]", err)
-		}
-		for _, configLogfile := range config.Logs {
-			tail, err := hydra.NewInTail(configLogfile, watcher, messageCh, monitorCh)
-			if err != nil {
-				log.Println("[error]", err)
-			} else {
-				go tail.Run()
-			}
-		}
-		go watcher.Run()
-	}
-
-	// start in_forward
-	if config.Receiver != nil {
-		if runtime.GOMAXPROCS(0) < 2 {
-			log.Println("[warning] When using Receiver, recommend to set GOMAXPROCS >= 2.")
-		}
-		inForward, err := hydra.NewInForward(config.Receiver, messageCh, monitorCh)
-		if err != nil {
-			log.Println("[error]", err)
-		} else {
-			go inForward.Run()
-		}
-	}
-	return messageCh
 }

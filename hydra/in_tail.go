@@ -51,17 +51,18 @@ func NewWatcher() (*Watcher, error) {
 	return w, nil
 }
 
-func (w *Watcher) Run() {
-	InputProcessGroup.Add(1)
-	defer InputProcessGroup.Done()
+func (w *Watcher) Run(c *Context) {
+	c.InputProcess.Add(1)
+	defer c.InputProcess.Done()
+	c.StartProcess.Done()
 
 	if len(w.watchingFile) == 0 {
-		log.Println("[error] no watching file. watcher aborted.")
+		// no need to watch
 		return
 	}
 	for {
 		select {
-		case <-ControlCh:
+		case <-c.ControlCh:
 			log.Println("[info] shutdown file watcher")
 			return
 		case ev := <-w.watcher.Events:
@@ -106,7 +107,7 @@ func Rel2Abs(filename string) (string, error) {
 	return filepath.Join(cwd, filename), nil
 }
 
-func NewInTail(config *ConfigLogfile, watcher *Watcher, messageCh chan *fluent.FluentRecordSet, monitorCh chan Stat) (*InTail, error) {
+func NewInTail(config *ConfigLogfile, watcher *Watcher) (*InTail, error) {
 	modifier := &RecordModifier{
 		convertMap:    config.ConvertMap,
 		timeParse:     config.TimeParse,
@@ -118,49 +119,57 @@ func NewInTail(config *ConfigLogfile, watcher *Watcher, messageCh chan *fluent.F
 			filename:       StdinFilename,
 			tag:            config.Tag,
 			fieldName:      config.FieldName,
-			messageCh:      messageCh,
-			monitorCh:      monitorCh,
 			format:         config.Format,
 			recordModifier: modifier,
-		}, nil
-	} else {
-		filename, err := Rel2Abs(config.File)
-		if err != nil {
-			return nil, err
-		}
-		eventCh, err := watcher.WatchFile(filename)
-		if err != nil {
-			return nil, err
-		}
-		return &InTail{
-			filename:       filename,
-			tag:            config.Tag,
-			fieldName:      config.FieldName,
-			lastReadAt:     time.Now(),
-			messageCh:      messageCh,
-			monitorCh:      monitorCh,
-			eventCh:        eventCh,
-			format:         config.Format,
-			recordModifier: modifier,
-			regexp:         config.Regexp,
 		}, nil
 	}
+
+	filename, err := Rel2Abs(config.File)
+	if err != nil {
+		return nil, err
+	}
+	eventCh, err := watcher.WatchFile(filename)
+	if err != nil {
+		return nil, err
+	}
+	return &InTail{
+		filename:       filename,
+		tag:            config.Tag,
+		fieldName:      config.FieldName,
+		lastReadAt:     time.Now(),
+		eventCh:        eventCh,
+		format:         config.Format,
+		recordModifier: modifier,
+		regexp:         config.Regexp,
+	}, nil
 }
 
 // InTail follow the tail of file and post BulkMessage to channel.
-func (t *InTail) Run() {
-	InputProcessGroup.Add(1)
-	defer InputProcessGroup.Done()
+func (t *InTail) Run(c *Context) {
+	c.InputProcess.Add(1)
+	defer c.InputProcess.Done()
+
+	t.messageCh = c.MessageCh
+	t.monitorCh = c.MonitorCh
+
+	c.StartProcess.Done()
 
 	if t.eventCh == nil {
-		t.TailStdin()
-		return
+		err := t.TailStdin(c)
+		if err != nil {
+			if _, ok := err.(Signal); ok {
+				log.Println("[info]", err)
+			} else {
+				log.Println("[error]", err)
+			}
+			return
+		}
 	}
 
 	log.Println("[info] Trying trail file", t.filename)
-	f, err := t.newTrailFile(SEEK_TAIL)
+	f, err := t.newTrailFile(SEEK_TAIL, c)
 	if err != nil {
-		if _, ok := err.(*ShutdownType); ok {
+		if _, ok := err.(Signal); ok {
 			log.Println("[info]", err)
 		} else {
 			log.Println("[error]", err)
@@ -169,9 +178,9 @@ func (t *InTail) Run() {
 	}
 	for {
 		for {
-			err := t.watchFileEvent(f)
+			err := t.watchFileEvent(f, c)
 			if err != nil {
-				if _, ok := err.(*ShutdownType); ok {
+				if _, ok := err.(Signal); ok {
 					log.Println("[info]", err)
 					return
 				} else {
@@ -182,9 +191,9 @@ func (t *InTail) Run() {
 		}
 		// re open file
 		var err error
-		f, err = t.newTrailFile(SEEK_HEAD)
+		f, err = t.newTrailFile(SEEK_HEAD, c)
 		if err != nil {
-			if _, ok := err.(*ShutdownType); ok {
+			if _, ok := err.(Signal); ok {
 				log.Println("[info]", err)
 			} else {
 				log.Println("[error]", err)
@@ -194,7 +203,7 @@ func (t *InTail) Run() {
 	}
 }
 
-func (t *InTail) newTrailFile(startPos int64) (*File, error) {
+func (t *InTail) newTrailFile(startPos int64, c *Context) (*File, error) {
 	seekTo := startPos
 	first := true
 	for {
@@ -221,17 +230,17 @@ func (t *InTail) newTrailFile(startPos int64) (*File, error) {
 		first = false
 		seekTo = SEEK_HEAD
 		select {
-		case <-ControlCh:
-			return nil, &ShutdownType{"shutdown in_tail: " + t.filename}
+		case <-c.ControlCh:
+			return nil, Signal{"shutdown in_tail: " + t.filename}
 		case <-time.NewTimer(OpenRetryInterval).C:
 		}
 	}
 }
 
-func (t *InTail) watchFileEvent(f *File) error {
+func (t *InTail) watchFileEvent(f *File, c *Context) error {
 	select {
-	case <-ControlCh:
-		return &ShutdownType{"shutdown in_tail: " + f.Path}
+	case <-c.ControlCh:
+		return Signal{"shutdown in_tail: " + f.Path}
 	case ev := <-t.eventCh:
 		if ev.Op&fsnotify.Write == fsnotify.Write {
 			break
@@ -264,7 +273,16 @@ func (t *InTail) watchFileEvent(f *File) error {
 	return nil
 }
 
-func (t *InTail) TailStdin() {
+func (t *InTail) TailStdin(c *Context) error {
+	t.monitorCh <- &FileStat{
+		Tag:      t.tag,
+		File:     t.filename,
+		Position: 0,
+	}
+	go func() {
+		<-c.ControlCh
+		os.Stdin.Close()
+	}()
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		b := scanner.Bytes()
@@ -276,13 +294,17 @@ func (t *InTail) TailStdin() {
 			Tag:      t.tag,
 		}
 	}
+	var msg string
 	if err := scanner.Err(); err != nil {
-		log.Println("reading stdin:", err)
-		t.monitorCh <- &FileStat{
-			File:     StdinFilename,
-			Position: t.position,
-			Tag:      t.tag,
-			Error:    err.Error(),
-		}
+		msg = err.Error()
+	} else {
+		msg = "closed"
 	}
+	t.monitorCh <- &FileStat{
+		File:     StdinFilename,
+		Position: t.position,
+		Tag:      t.tag,
+		Error:    msg,
+	}
+	return NewSignal("shutdown in_tail: STDIN")
 }

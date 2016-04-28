@@ -3,14 +3,15 @@ package hydra_test
 import (
 	"bytes"
 	"fmt"
-	"github.com/fujiwara/fluent-agent-hydra/hydra"
-	"github.com/mattn/go-scan"
 	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
 	"os"
 	"testing"
+
+	"github.com/fujiwara/fluent-agent-hydra/hydra"
+	"github.com/mattn/go-scan"
 )
 
 func TestMonitorServer(t *testing.T) {
@@ -20,9 +21,9 @@ func TestMonitorServer(t *testing.T) {
 			Port: 0,
 		},
 	}
-	_, ch := hydra.NewChannel()
-	monitor, _ := hydra.NewMonitor(config, ch)
-	go monitor.Run()
+	c := hydra.NewContext()
+	monitor, _ := hydra.NewMonitor(config)
+	c.RunProcess(monitor)
 
 	expectedMessages := make(map[string]int64)
 	expectedBytes := make(map[string]int64)
@@ -31,7 +32,7 @@ func TestMonitorServer(t *testing.T) {
 		for i := 1; i <= 100; i++ {
 			m := rand.Int63n(10)
 			b := rand.Int63n(2560)
-			ch <- &hydra.SentStat{
+			c.MonitorCh <- &hydra.SentStat{
 				Tag:      tag,
 				Messages: m,
 				Bytes:    b,

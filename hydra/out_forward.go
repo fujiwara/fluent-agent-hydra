@@ -21,7 +21,7 @@ const (
 )
 
 // OutForward ... recieve FluentRecordSet from channel, and send it to passed loggers until success.
-func NewOutForward(configServers []*ConfigServer, messageCh chan *fluent.FluentRecordSet, monitorCh chan Stat) (*OutForward, error) {
+func NewOutForward(configServers []*ConfigServer) (*OutForward, error) {
 	loggers := make([]*fluent.Fluent, len(configServers))
 	for i, server := range configServers {
 		logger, err := fluent.New(fluent.Config{Server: server.Address()})
@@ -34,16 +34,18 @@ func NewOutForward(configServers []*ConfigServer, messageCh chan *fluent.FluentR
 		logger.Send([]byte{})
 	}
 	return &OutForward{
-		loggers:   loggers,
-		messageCh: messageCh,
-		monitorCh: monitorCh,
-		sent:      0,
+		loggers: loggers,
+		sent:    0,
 	}, nil
 }
 
-func (f *OutForward) Run() {
-	OutputProcessGroup.Add(1)
-	defer OutputProcessGroup.Done()
+func (f *OutForward) Run(c *Context) {
+	c.OutputProcess.Add(1)
+	defer c.OutputProcess.Done()
+	f.messageCh = c.MessageCh
+	f.monitorCh = c.MonitorCh
+
+	c.StartProcess.Done()
 
 	for i, _ := range f.loggers {
 		go f.checkServerHealth(i)
@@ -52,7 +54,7 @@ func (f *OutForward) Run() {
 	for {
 		err := f.outForwardRecieve()
 		if err != nil {
-			if _, ok := err.(*ShutdownType); ok {
+			if _, ok := err.(Signal); ok {
 				log.Println("[info]", err)
 				return
 			} else {
@@ -68,7 +70,7 @@ func (f *OutForward) outForwardRecieve() error {
 		for _, logger := range f.loggers {
 			logger.Shutdown()
 		}
-		return &ShutdownType{"shutdown out_forward"}
+		return Signal{"shutdown out_forward"}
 	}
 	first := true
 	packed, err := recordSet.PackAsPackedForward()

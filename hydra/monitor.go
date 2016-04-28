@@ -125,16 +125,14 @@ type Monitor struct {
 	monitorCh chan Stat
 }
 
-func NewMonitor(config *Config, monitorCh chan Stat) (*Monitor, error) {
+func NewMonitor(config *Config) (*Monitor, error) {
 	stats := &Stats{
 		Sent:    make(map[string]*SentStat),
 		Files:   make(map[string]*FileStat),
 		Servers: make([]*ServerStat, len(config.Servers)),
 	}
-	go stats.Run(monitorCh)
 	monitor := &Monitor{
-		stats:     stats,
-		monitorCh: monitorCh,
+		stats: stats,
 	}
 	if config.Monitor == nil {
 		return monitor, nil
@@ -150,7 +148,13 @@ func NewMonitor(config *Config, monitorCh chan Stat) (*Monitor, error) {
 	return monitor, nil
 }
 
-func (m *Monitor) Run() {
+func (m *Monitor) Run(c *Context) {
+	c.OutputProcess.Add(1)
+	defer c.OutputProcess.Done()
+	go m.stats.Run(c.MonitorCh)
+
+	c.StartProcess.Done()
+
 	if m.listener == nil {
 		return
 	}
