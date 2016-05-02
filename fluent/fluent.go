@@ -60,6 +60,47 @@ type Fluent struct {
 	Sent            int64
 }
 
+type FluentRecordType interface {
+	Pack() ([]byte, error)
+	GetData(string) (interface{}, bool)
+	GetAllData() map[string]interface{}
+	String() string
+}
+
+type FluentRecordSet struct {
+	Tag     string
+	Records []FluentRecordType
+}
+
+func (rs *FluentRecordSet) PackAsPackedForward() ([]byte, error) {
+	buffer := make([]byte, 0)
+	for _, record := range rs.Records {
+		data, err := record.Pack()
+		if err != nil {
+			return nil, err
+		}
+		buffer = append(buffer, data...)
+	}
+	return toMsgpackRecordSet(rs.Tag, buffer), nil
+}
+
+func (rs *FluentRecordSet) PackAsForward() ([]byte, error) {
+	records := make([]interface{}, len(rs.Records))
+	var err error
+	for i, record := range rs.Records {
+		records[i], err = record.Pack()
+		if err != nil {
+			return nil, err
+		}
+	}
+	if data, dumperr := toMsgpack([]interface{}{rs.Tag, records}); dumperr != nil {
+		fmt.Println("Can't convert to msgpack")
+		return nil, dumperr
+	} else {
+		return data, nil
+	}
+}
+
 var Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 // New creates a new Logger.

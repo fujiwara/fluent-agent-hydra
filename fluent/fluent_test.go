@@ -12,7 +12,6 @@ import (
 func TestConnectToServer(t *testing.T) {
 	hosts := []string{
 		"127.0.0.1",
-		"localhost",
 		"[::1]",
 	}
 	for _, host := range hosts {
@@ -46,6 +45,7 @@ func startDummyServer(host string) string {
 		if err != nil {
 			panic(err)
 		}
+		log.Println("listening", host+":"+port)
 		ch <- port
 		for {
 			conn, _ := l.Accept()
