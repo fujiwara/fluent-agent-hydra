@@ -1,8 +1,9 @@
+//go:generate ffjson $GOFILE
+
 package hydra
 
 import (
 	"bytes"
-	"encoding/json"
 	"log"
 	"runtime"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/fujiwara/fluent-agent-hydra/fluent"
+	"github.com/pquerna/ffjson/ffjson"
 )
 
 const (
@@ -124,9 +126,11 @@ func NewFluentRecordLTSV(key string, line []byte) *fluent.TinyFluentRecord {
 	return &fluent.TinyFluentRecord{Data: data}
 }
 
+type InputJSON map[string]interface{}
+
 func NewFluentRecordJSON(key string, line []byte) *fluent.TinyFluentRecord {
 	data := make(map[string]interface{})
-	err := json.Unmarshal(line, &data)
+	err := ffjson.Unmarshal(line, &data)
 	if err != nil {
 		data[key] = string(line)
 	}
