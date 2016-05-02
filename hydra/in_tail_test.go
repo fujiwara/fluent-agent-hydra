@@ -57,20 +57,20 @@ func TestTrail(t *testing.T) {
 		File:      file.Name(),
 		FieldName: "message",
 	}
-	msgCh, monCh := hydra.NewChannel()
+	c := hydra.NewContext()
 	watcher, err := hydra.NewWatcher()
 	if err != nil {
 		t.Error(err)
 	}
-	inTail, err := hydra.NewInTail(configLogfile, watcher, msgCh, monCh)
+	inTail, err := hydra.NewInTail(configLogfile, watcher)
 	if err != nil {
 		t.Error(err)
 	}
-	go inTail.Run()
-	go watcher.Run()
+	c.RunProcess(inTail)
+	c.RunProcess(watcher)
 
 	resultCh := make(chan string)
-	go reciever(t, msgCh, "test", resultCh)
+	go reciever(t, c.MessageCh, "test", resultCh)
 
 	recieved := <-resultCh
 	sent := strings.Join(Logs, "")

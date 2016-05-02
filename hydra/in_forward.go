@@ -2,11 +2,13 @@ package hydra
 
 import (
 	"fmt"
-	"github.com/fujiwara/fluent-agent-hydra/fluent"
 	"io"
 	"log"
 	"net"
+	"strings"
 	"time"
+
+	"github.com/fujiwara/fluent-agent-hydra/fluent"
 )
 
 const (
@@ -22,7 +24,7 @@ type InForward struct {
 	messageQueue *MessageQueue
 }
 
-func NewInForward(config *ConfigReceiver, messageCh chan *fluent.FluentRecordSet, monitorCh chan Stat) (*InForward, error) {
+func NewInForward(config *ConfigReceiver) (*InForward, error) {
 	addr := fmt.Sprintf("%s:%d", config.Host, config.Port)
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -33,28 +35,45 @@ func NewInForward(config *ConfigReceiver, messageCh chan *fluent.FluentRecordSet
 	f := &InForward{
 		listener:     l,
 		Addr:         l.Addr(),
-		messageCh:    messageCh,
-		monitorCh:    monitorCh,
 		messageQueue: NewMessageQueue(config.MaxBufferMessages),
-	}
-	monitorCh <- &ReceiverStat{
-		Address:           f.Addr.String(),
-		MaxBufferMessages: int64(config.MaxBufferMessages),
 	}
 	return f, nil
 }
 
-func (f *InForward) Run() {
+func (f *InForward) Run(c *Context) {
+	c.InputProcess.Add(1)
+	defer c.InputProcess.Done()
+	f.messageCh = c.MessageCh
+	f.monitorCh = c.MonitorCh
+
+	c.StartProcess.Done()
+
+	f.monitorCh <- &ReceiverStat{
+		Address:           f.Addr.String(),
+		MaxBufferMessages: int64(f.messageQueue.maxMessages),
+	}
+
 	go f.feed()
+	go func() {
+		<-c.ControlCh
+		f.listener.Close()
+	}()
 	for {
 		conn, err := f.listener.Accept()
 		if err != nil {
-			log.Println("[error] accept error", err)
+			if strings.Index(err.Error(), "use of closed network connection") != -1 {
+				log.Println("[info] shutdown in_forward accept")
+				// closed
+				return
+			} else {
+				log.Println("[error] accept error", err)
+			}
+			continue
 		}
 		f.monitorCh <- &ReceiverStat{
 			Connections: 1,
 		}
-		go f.handleConn(conn)
+		go f.handleConn(conn, c)
 	}
 }
 
@@ -71,13 +90,22 @@ func (f *InForward) feed() {
 	}
 }
 
-func (f *InForward) handleConn(conn net.Conn) {
+func (f *InForward) handleConn(conn net.Conn, c *Context) {
+	c.InputProcess.Add(1)
+	defer c.InputProcess.Done()
 	defer func() {
 		f.monitorCh <- &ReceiverStat{
 			Connections: -1,
 		}
 	}()
+
 	for {
+		select {
+		case <-c.ControlCh:
+			log.Println("shutdown in_forward connection", conn)
+			return
+		default:
+		}
 		recordSets, err := fluent.DecodeEntries(conn)
 		if err == io.EOF {
 			conn.Close()

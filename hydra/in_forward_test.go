@@ -1,13 +1,14 @@
 package hydra_test
 
 import (
-	"github.com/fujiwara/fluent-agent-hydra/hydra"
-	client "github.com/t-k/fluent-logger-golang/fluent"
 	"log"
 	"net"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/fujiwara/fluent-agent-hydra/hydra"
+	client "github.com/t-k/fluent-logger-golang/fluent"
 )
 
 func TestInForward(t *testing.T) {
@@ -16,12 +17,12 @@ func TestInForward(t *testing.T) {
 		Port:              0,
 		MaxBufferMessages: 1000,
 	}
-	messageCh, monitorCh := hydra.NewChannel()
-	inForward, err := hydra.NewInForward(config, messageCh, monitorCh)
+	c := hydra.NewContext()
+	inForward, err := hydra.NewInForward(config)
 	if err != nil {
 		t.Error(err)
 	}
-	go inForward.Run()
+	c.RunProcess(inForward)
 
 	host, _port, _ := net.SplitHostPort(inForward.Addr.String())
 	port, _ := strconv.Atoi(_port)
@@ -47,7 +48,7 @@ func TestInForward(t *testing.T) {
 RECEIVE:
 	for {
 		select {
-		case <-messageCh:
+		case <-c.MessageCh:
 			n++
 			continue
 		case <-time.After(1 * time.Second):

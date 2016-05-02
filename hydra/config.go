@@ -141,6 +141,10 @@ func (cs *ConfigServer) Address() string {
 	return fmt.Sprintf("%s:%d", cs.Host, cs.Port)
 }
 
+func (cl *ConfigLogfile) IsStdin() bool {
+	return cl.File == StdinFilename
+}
+
 func (cl *ConfigLogfile) Restrict(c *Config) {
 	if cl.FieldName == "" {
 		cl.FieldName = c.FieldName

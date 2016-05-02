@@ -3,7 +3,10 @@ package hydra
 import (
 	"bytes"
 	"encoding/json"
+	"log"
+	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/fujiwara/fluent-agent-hydra/fluent"
@@ -15,23 +18,56 @@ const (
 	LineSeparatorStr        = "\n"
 	LTSVColSeparatorStr     = "\t"
 	LTSVDataSeparatorStr    = ":"
+	StdinFilename           = "-"
 )
 
 var (
 	LineSeparator = []byte{'\n'}
 )
 
-type ShutdownType struct {
+type Process interface {
+	Run(*Context)
+}
+
+type Signal struct {
 	message string
 }
 
-func (s *ShutdownType) Error() string { return s.message }
+func (s Signal) Error() string {
+	return s.message
+}
 
-// NewChannel create channel for using by OutForward() and InTail().
-func NewChannel() (chan *fluent.FluentRecordSet, chan Stat) {
-	messageCh := make(chan *fluent.FluentRecordSet, MessageChannelBufferLen)
-	monitorCh := make(chan Stat, MonitorChannelBufferLen)
-	return messageCh, monitorCh
+func (s Signal) String() string {
+	return s.message
+}
+
+func (s Signal) Signal() {
+}
+
+func NewSignal(message string) Signal {
+	return Signal{message}
+}
+
+type Context struct {
+	MessageCh     chan *fluent.FluentRecordSet
+	MonitorCh     chan Stat
+	ControlCh     chan interface{}
+	InputProcess  sync.WaitGroup
+	OutputProcess sync.WaitGroup
+	StartProcess  sync.WaitGroup
+}
+
+func NewContext() *Context {
+	return &Context{
+		MessageCh: make(chan *fluent.FluentRecordSet, MessageChannelBufferLen),
+		MonitorCh: make(chan Stat, MonitorChannelBufferLen),
+		ControlCh: make(chan interface{}),
+	}
+}
+
+func (c *Context) RunProcess(p Process) {
+	c.StartProcess.Add(1)
+	go p.Run(c)
 }
 
 func NewFluentRecordSet(tag, key string, format FileFormat, mod *RecordModifier, reg *Regexp, buffer []byte) *fluent.FluentRecordSet {
@@ -110,4 +146,72 @@ func NewFluentRecordRegexp(key string, line []byte, r *Regexp) *fluent.TinyFluen
 		}
 	}
 	return &fluent.TinyFluentRecord{Data: data}
+}
+
+func Run(config *Config) *Context {
+	c := NewContext()
+
+	if config.ReadBufferSize > 0 {
+		ReadBufferSize = config.ReadBufferSize
+		log.Println("[info] set ReadBufferSize", ReadBufferSize)
+	}
+
+	// start monitor server
+	monitor, err := NewMonitor(config)
+	if err != nil {
+		log.Println("[error] Couldn't start monitor server.", err)
+	} else {
+		c.RunProcess(monitor)
+	}
+
+	// start out_forward
+	outForward, err := NewOutForward(config.Servers)
+	if err != nil {
+		log.Println("[error]", err)
+	} else {
+		outForward.RoundRobin = config.ServerRoundRobin
+		if outForward.RoundRobin {
+			log.Println("[info] ServerRoundRobin enabled")
+		}
+		c.RunProcess(outForward)
+	}
+
+	// start watcher && in_tail
+	if len(config.Logs) > 0 {
+		watcher, err := NewWatcher()
+		if err != nil {
+			log.Println("[error]", err)
+		}
+		for _, configLogfile := range config.Logs {
+			tail, err := NewInTail(configLogfile, watcher)
+			if err != nil {
+				log.Println("[error]", err)
+			} else {
+				c.RunProcess(tail)
+			}
+		}
+		c.RunProcess(watcher)
+	}
+
+	// start in_forward
+	if config.Receiver != nil {
+		if runtime.GOMAXPROCS(0) < 2 {
+			log.Println("[warning] When using Receiver, recommend to set GOMAXPROCS >= 2.")
+		}
+		inForward, err := NewInForward(config.Receiver)
+		if err != nil {
+			log.Println("[error]", err)
+		} else {
+			c.RunProcess(inForward)
+		}
+	}
+	c.StartProcess.Wait()
+	return c
+}
+
+func (c *Context) Shutdown() {
+	close(c.ControlCh)
+	c.InputProcess.Wait()
+	close(c.MessageCh)
+	c.OutputProcess.Wait()
 }

@@ -1,6 +1,7 @@
 package hydra
 
 import (
+	"bufio"
 	"errors"
 	"io"
 	"log"
@@ -27,6 +28,7 @@ type InTail struct {
 	format         FileFormat
 	recordModifier *RecordModifier
 	regexp         *Regexp
+	position       int64
 }
 
 type Watcher struct {
@@ -49,13 +51,20 @@ func NewWatcher() (*Watcher, error) {
 	return w, nil
 }
 
-func (w *Watcher) Run() {
+func (w *Watcher) Run(c *Context) {
+	c.InputProcess.Add(1)
+	defer c.InputProcess.Done()
+	c.StartProcess.Done()
+
 	if len(w.watchingFile) == 0 {
-		log.Println("[error] no watching file. watcher aborted.")
+		// no need to watch
 		return
 	}
 	for {
 		select {
+		case <-c.ControlCh:
+			log.Println("[info] shutdown file watcher")
+			return
 		case ev := <-w.watcher.Events:
 			if eventCh, ok := w.watchingFile[ev.Name]; ok {
 				eventCh <- ev
@@ -98,7 +107,23 @@ func Rel2Abs(filename string) (string, error) {
 	return filepath.Join(cwd, filename), nil
 }
 
-func NewInTail(config *ConfigLogfile, watcher *Watcher, messageCh chan *fluent.FluentRecordSet, monitorCh chan Stat) (*InTail, error) {
+func NewInTail(config *ConfigLogfile, watcher *Watcher) (*InTail, error) {
+	modifier := &RecordModifier{
+		convertMap:    config.ConvertMap,
+		timeParse:     config.TimeParse,
+		timeKey:       config.TimeKey,
+		timeConverter: TimeConverter(config.TimeFormat),
+	}
+	if config.IsStdin() {
+		return &InTail{
+			filename:       StdinFilename,
+			tag:            config.Tag,
+			fieldName:      config.FieldName,
+			format:         config.Format,
+			recordModifier: modifier,
+		}, nil
+	}
+
 	filename, err := Rel2Abs(config.File)
 	if err != nil {
 		return nil, err
@@ -107,47 +132,78 @@ func NewInTail(config *ConfigLogfile, watcher *Watcher, messageCh chan *fluent.F
 	if err != nil {
 		return nil, err
 	}
-	modifier := &RecordModifier{
-		convertMap:    config.ConvertMap,
-		timeParse:     config.TimeParse,
-		timeKey:       config.TimeKey,
-		timeConverter: TimeConverter(config.TimeFormat),
-	}
-	t := &InTail{
+	return &InTail{
 		filename:       filename,
 		tag:            config.Tag,
 		fieldName:      config.FieldName,
 		lastReadAt:     time.Now(),
-		messageCh:      messageCh,
-		monitorCh:      monitorCh,
 		eventCh:        eventCh,
 		format:         config.Format,
 		recordModifier: modifier,
 		regexp:         config.Regexp,
-	}
-	return t, nil
+	}, nil
 }
 
 // InTail follow the tail of file and post BulkMessage to channel.
-func (t *InTail) Run() {
-	defer log.Println("[error] Aborted to in_tail.run()")
+func (t *InTail) Run(c *Context) {
+	c.InputProcess.Add(1)
+	defer c.InputProcess.Done()
+
+	t.messageCh = c.MessageCh
+	t.monitorCh = c.MonitorCh
+
+	c.StartProcess.Done()
+
+	if t.eventCh == nil {
+		err := t.TailStdin(c)
+		if err != nil {
+			if _, ok := err.(Signal); ok {
+				log.Println("[info]", err)
+			} else {
+				log.Println("[error]", err)
+			}
+			return
+		}
+	}
 
 	log.Println("[info] Trying trail file", t.filename)
-	f := t.newTrailFile(SEEK_TAIL)
+	f, err := t.newTrailFile(SEEK_TAIL, c)
+	if err != nil {
+		if _, ok := err.(Signal); ok {
+			log.Println("[info]", err)
+		} else {
+			log.Println("[error]", err)
+		}
+		return
+	}
 	for {
 		for {
-			err := t.watchFileEvent(f)
+			err := t.watchFileEvent(f, c)
 			if err != nil {
-				log.Println("[warning]", err)
-				break
+				if _, ok := err.(Signal); ok {
+					log.Println("[info]", err)
+					return
+				} else {
+					log.Println("[warning]", err)
+					break
+				}
 			}
 		}
 		// re open file
-		f = t.newTrailFile(SEEK_HEAD)
+		var err error
+		f, err = t.newTrailFile(SEEK_HEAD, c)
+		if err != nil {
+			if _, ok := err.(Signal); ok {
+				log.Println("[info]", err)
+			} else {
+				log.Println("[error]", err)
+			}
+			return
+		}
 	}
 }
 
-func (t *InTail) newTrailFile(startPos int64) *File {
+func (t *InTail) newTrailFile(startPos int64, c *Context) (*File, error) {
 	seekTo := startPos
 	first := true
 	for {
@@ -160,7 +216,7 @@ func (t *InTail) newTrailFile(startPos int64) *File {
 			f.Regexp = t.regexp
 			log.Println("[info] Trailing file:", f.Path, "tag:", f.Tag, "format:", t.format)
 			t.monitorCh <- f.UpdateStat()
-			return f
+			return f, nil
 		}
 		t.monitorCh <- &FileStat{
 			Tag:      t.tag,
@@ -173,12 +229,18 @@ func (t *InTail) newTrailFile(startPos int64) *File {
 		}
 		first = false
 		seekTo = SEEK_HEAD
-		time.Sleep(OpenRetryInterval)
+		select {
+		case <-c.ControlCh:
+			return nil, Signal{"shutdown in_tail: " + t.filename}
+		case <-time.NewTimer(OpenRetryInterval).C:
+		}
 	}
 }
 
-func (t *InTail) watchFileEvent(f *File) error {
+func (t *InTail) watchFileEvent(f *File, c *Context) error {
 	select {
+	case <-c.ControlCh:
+		return Signal{"shutdown in_tail: " + f.Path}
 	case ev := <-t.eventCh:
 		if ev.Op&fsnotify.Write == fsnotify.Write {
 			break
@@ -209,4 +271,40 @@ func (t *InTail) watchFileEvent(f *File) error {
 		return err
 	}
 	return nil
+}
+
+func (t *InTail) TailStdin(c *Context) error {
+	t.monitorCh <- &FileStat{
+		Tag:      t.tag,
+		File:     t.filename,
+		Position: 0,
+	}
+	go func() {
+		<-c.ControlCh
+		os.Stdin.Close()
+	}()
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		b := scanner.Bytes()
+		t.position += int64(len(b) + 1)
+		t.messageCh <- NewFluentRecordSet(t.tag, t.fieldName, t.format, t.recordModifier, t.regexp, b)
+		t.monitorCh <- &FileStat{
+			File:     StdinFilename,
+			Position: t.position,
+			Tag:      t.tag,
+		}
+	}
+	var msg string
+	if err := scanner.Err(); err != nil {
+		msg = err.Error()
+	} else {
+		msg = "closed"
+	}
+	t.monitorCh <- &FileStat{
+		File:     StdinFilename,
+		Position: t.position,
+		Tag:      t.tag,
+		Error:    msg,
+	}
+	return NewSignal("shutdown in_tail: STDIN")
 }

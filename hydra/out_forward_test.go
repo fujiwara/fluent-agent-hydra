@@ -45,21 +45,21 @@ func TestForwardSingle(t *testing.T) {
 
 	addr, mockCloser := runMockServer(t, "", &counter)
 	configServer := newConfigServer(addr)
-	msgCh, monCh := hydra.NewChannel()
-	outForward, err := hydra.NewOutForward([]*hydra.ConfigServer{configServer}, msgCh, monCh)
+	c := hydra.NewContext()
+	outForward, err := hydra.NewOutForward([]*hydra.ConfigServer{configServer})
 	if err != nil {
 		t.Error(err)
 	}
-	go outForward.Run()
+	c.RunProcess(outForward)
 
 	recordSet := prepareRecordSet()
-	msgCh <- recordSet
+	c.MessageCh <- recordSet
 	sleep(3)
 
 	if n := atomic.LoadInt64(&counter); n != int64(len(TestMessageLines)) {
 		t.Error("insufficient recieved messages. sent", len(TestMessageLines), "recieved", n)
 	}
-	close(msgCh)
+	c.Shutdown()
 	close(mockCloser)
 	sleep(1)
 }
@@ -70,15 +70,15 @@ func TestForwardReconnect(t *testing.T) {
 
 	addr, mockCloser := runMockServer(t, "", &counter)
 	configServer := newConfigServer(addr)
-	msgCh, monCh := hydra.NewChannel()
-	outForward, err := hydra.NewOutForward([]*hydra.ConfigServer{configServer}, msgCh, monCh)
+	c := hydra.NewContext()
+	outForward, err := hydra.NewOutForward([]*hydra.ConfigServer{configServer})
 	if err != nil {
 		t.Error(err)
 	}
-	go outForward.Run()
+	c.RunProcess(outForward)
 
 	recordSet := prepareRecordSet()
-	msgCh <- recordSet
+	c.MessageCh <- recordSet
 	sleep(1)
 
 	t.Log("notify shutdown mockServer")
@@ -89,9 +89,9 @@ func TestForwardReconnect(t *testing.T) {
 	t.Log("restarting mock server on same addr", addr)
 	_, mockCloser = runMockServer(t, addr, &counter)
 	sleep(1)
-	msgCh <- recordSet // Afeter unexpected server closing, first Write() will be succeeded and lost...
+	c.MessageCh <- recordSet // Afeter unexpected server closing, first Write() will be succeeded and lost...
 	sleep(1)
-	msgCh <- recordSet
+	c.MessageCh <- recordSet
 	t.Log("waiting for reconnect & resend completed 5 sec")
 	sleep(3)
 
@@ -99,7 +99,7 @@ func TestForwardReconnect(t *testing.T) {
 		t.Error("insufficient recieved messages. sent", len(TestMessageLines)*2, "recieved", n)
 	}
 	close(mockCloser)
-	close(msgCh)
+	c.Shutdown()
 	sleep(1)
 }
 
@@ -117,24 +117,24 @@ func TestForwardFailOver(t *testing.T) {
 		primaryConfigServer,
 		secondaryConfigServer,
 	}
-	msgCh, monCh := hydra.NewChannel()
-	outForward, err := hydra.NewOutForward(configServers, msgCh, monCh)
+	c := hydra.NewContext()
+	outForward, err := hydra.NewOutForward(configServers)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	go outForward.Run()
+	c.RunProcess(outForward)
 
 	sleep(1)
 
 	recordSet := prepareRecordSet()
-	msgCh <- recordSet
+	c.MessageCh <- recordSet
 	sleep(1)
 
 	if n := atomic.LoadInt64(&counter); n != int64(len(TestMessageLines)) {
 		t.Error("insufficient recieved messages. sent", len(TestMessageLines), "recieved", n)
 	}
-	close(msgCh)
+	c.Shutdown()
 	close(secondaryCloser)
 	sleep(1)
 }

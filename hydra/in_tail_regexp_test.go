@@ -50,17 +50,17 @@ func TestTrailRegexp(t *testing.T) {
 		TimeFormat: hydra.TimeFormatApache,
 		TimeKey:    "time",
 	}
-	msgCh, monCh := hydra.NewChannel()
+	c := hydra.NewContext()
 	watcher, err := hydra.NewWatcher()
 	if err != nil {
 		t.Error(err)
 	}
-	inTail, err := hydra.NewInTail(configLogfile, watcher, msgCh, monCh)
+	inTail, err := hydra.NewInTail(configLogfile, watcher)
 	if err != nil {
 		t.Error(err)
 	}
-	go inTail.Run()
-	go watcher.Run()
+	c.RunProcess(inTail)
+	c.RunProcess(watcher)
 	go func() {
 		time.Sleep(1 * time.Second)
 		fileWriter(t, file, RegexpLogs)
@@ -68,7 +68,7 @@ func TestTrailRegexp(t *testing.T) {
 
 	i := 0
 	for i < len(RegexpLogs) {
-		recordSet := <-msgCh
+		recordSet := <-c.MessageCh
 		if recordSet.Tag != "test" {
 			t.Errorf("got %v\nwant %v", recordSet.Tag, "test")
 		}
