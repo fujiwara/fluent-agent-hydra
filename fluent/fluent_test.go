@@ -3,6 +3,7 @@ package fluent_test
 import (
 	"log"
 	"net"
+	"os"
 	"testing"
 	"time"
 
@@ -12,8 +13,10 @@ import (
 func TestConnectToServer(t *testing.T) {
 	hosts := []string{
 		"127.0.0.1",
-		"localhost",
-		"[::1]",
+	}
+	if os.Getenv("TRAVIS") != "" {
+		// travis-ci has not ipv6 networking
+		hosts = append(hosts, "[::1]")
 	}
 	for _, host := range hosts {
 		port := startDummyServer(host)
