@@ -87,7 +87,7 @@ func main() {
 	// waiting for all input processes are terminated or got os signal
 	sig := <-sigCh
 
-	log.Println("[info]", sig, "shutting down")
+	log.Println("[info] SIGNAL", sig, "shutting down")
 	pprof.StopCPUProfile()
 
 	go func() {
