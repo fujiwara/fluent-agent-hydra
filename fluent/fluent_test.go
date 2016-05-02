@@ -14,7 +14,7 @@ func TestConnectToServer(t *testing.T) {
 	hosts := []string{
 		"127.0.0.1",
 	}
-	if os.Getenv("TRAVIS") != "" {
+	if os.Getenv("TRAVIS") == "" {
 		// travis-ci has not ipv6 networking
 		hosts = append(hosts, "[::1]")
 	}
