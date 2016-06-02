@@ -7,19 +7,21 @@ import (
 )
 
 const (
-	mpInt32     byte = 0xd2
-	mpInt64          = 0xd3
-	mpUint32         = 0xce
-	mpUint64         = 0xcf
-	mpStr            = 0xa0
-	mpStr8           = 0xd9
-	mpStr16          = 0xda
-	mpStr32          = 0xdb
-	mp2ElmArray      = 0x92
-	mp1ElmMap        = 0x81
-	mpBytes8         = 0xc4
-	mpBytes16        = 0xc5
-	mpBytes32        = 0xc6
+	mpInt32         byte = 0xd2
+	mpInt64              = 0xd3
+	mpUint32             = 0xce
+	mpUint64             = 0xcf
+	mpStr                = 0xa0
+	mpStr8               = 0xd9
+	mpStr16              = 0xda
+	mpStr32              = 0xdb
+	mp2ElmArray          = 0x92
+	mp1ElmMap            = 0x81
+	mpBytes8             = 0xc4
+	mpBytes16            = 0xc5
+	mpBytes32            = 0xc6
+	mpExtension8         = 0xd7
+	mpEventTimeType      = 0x00
 )
 
 type msgpackBuffer struct {
@@ -67,8 +69,17 @@ func toMsgpackTinyMessage(ts time.Time, key string, value []byte) []byte {
 	// 2 elments array [ts, {key: value}]
 	b.WriteByte(mp2ElmArray)
 	// ts
-	b.WriteByte(mpInt64)
-	b.WriteValue(ts.Unix())
+	if ts.UnixNano() == 0 {
+		// int64
+		b.WriteByte(mpInt64)
+		b.WriteValue(ts.Unix())
+	} else {
+		// EventTime
+		b.WriteByte(mpExtension8)
+		b.WriteByte(mpEventTimeType)
+		b.WriteValue(ts.Unix())
+		b.WriteValue(ts.UnixNano())
+	}
 	// 1 element map {key: value}
 	b.WriteByte(mp1ElmMap)
 	// key

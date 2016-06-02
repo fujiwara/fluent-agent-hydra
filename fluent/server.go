@@ -198,10 +198,10 @@ func decodeRecordSet(tag []byte, entries []interface{}) (FluentRecordSet, error)
 			return FluentRecordSet{}, errors.New("Failed to decode recordSet")
 		}
 		// timestamp
-		var timestamp int64
+		var timestamp time.Time
 		switch entry[0].(type) {
 		case int, uint, int64, uint64, int32, uint32, float32, float64:
-			timestamp = toInt64(entry[0])
+			timestamp = time.Unix(toInt64(entry[0]), 0)
 		default:
 			return FluentRecordSet{}, errors.New("Failed to decode timestamp field")
 		}
@@ -212,7 +212,7 @@ func decodeRecordSet(tag []byte, entries []interface{}) (FluentRecordSet, error)
 		}
 		coerceInPlace(data)
 		records[i] = &TinyFluentRecord{
-			Timestamp: time.Unix(timestamp, 0),
+			Timestamp: timestamp,
 			Data:      data,
 		}
 	}
