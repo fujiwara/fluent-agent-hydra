@@ -40,7 +40,7 @@ import (
 
 type FluentRecord struct {
 	Tag       string
-	Timestamp int64
+	Timestamp time.Time
 	Data      map[string]interface{}
 }
 
@@ -58,7 +58,7 @@ func (r *FluentRecord) String() string {
 	_d, _ := json.Marshal(r.Data)
 	return strings.Join(
 		[]string{
-			time.Unix(r.Timestamp, 0).Format(time.RFC3339),
+			r.Timestamp.Format(time.RFC3339),
 			r.Tag,
 			string(_d),
 		},
@@ -83,7 +83,7 @@ type FluentRecordType interface {
 }
 
 type TinyFluentRecord struct {
-	Timestamp int64
+	Timestamp time.Time
 	Data      map[string]interface{}
 }
 
@@ -105,7 +105,7 @@ func (r *TinyFluentRecord) String() string {
 	_d, _ := json.Marshal(r.Data)
 	return strings.Join(
 		[]string{
-			time.Unix(r.Timestamp, 0).Format(time.RFC3339),
+			r.Timestamp.Format(time.RFC3339),
 			string(_d),
 		},
 		"\t",
@@ -113,7 +113,7 @@ func (r *TinyFluentRecord) String() string {
 }
 
 type TinyFluentMessage struct {
-	Timestamp int64
+	Timestamp time.Time
 	FieldName string
 	Message   []byte
 }
@@ -138,7 +138,7 @@ func (r *TinyFluentMessage) String() string {
 	_d, _ := json.Marshal(r.GetAllData())
 	return strings.Join(
 		[]string{
-			time.Unix(r.Timestamp, 0).Format(time.RFC3339),
+			r.Timestamp.Format(time.RFC3339),
 			string(_d),
 		},
 		"\t",
@@ -212,7 +212,7 @@ func decodeRecordSet(tag []byte, entries []interface{}) (FluentRecordSet, error)
 		}
 		coerceInPlace(data)
 		records[i] = &TinyFluentRecord{
-			Timestamp: timestamp,
+			Timestamp: time.Unix(timestamp, 0),
 			Data:      data,
 		}
 	}
@@ -250,7 +250,7 @@ func DecodeEntries(conn net.Conn) ([]FluentRecordSet, error) {
 				Tag: string(tag), // XXX: byte => rune
 				Records: []FluentRecordType{
 					&TinyFluentRecord{
-						Timestamp: int64(timestamp),
+						Timestamp: time.Unix(timestamp, 0),
 						Data:      data,
 					},
 				},

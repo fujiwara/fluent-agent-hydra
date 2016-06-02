@@ -100,7 +100,7 @@ func (m *RecordModifier) Modify(r *fluent.TinyFluentRecord) {
 	if _t, ok := r.Data[m.timeKey]; ok {
 		if t, ok := _t.(string); ok {
 			if ts, err := m.timeConverter.Convert(t); err == nil {
-				r.Timestamp = ts.Unix()
+				r.Timestamp = ts
 			}
 		}
 	}

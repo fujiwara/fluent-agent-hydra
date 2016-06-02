@@ -2,15 +2,16 @@ package hydra_test
 
 import (
 	"fmt"
-	"github.com/fujiwara/fluent-agent-hydra/fluent"
-	"github.com/fujiwara/fluent-agent-hydra/hydra"
 	"testing"
 	"time"
+
+	"github.com/fujiwara/fluent-agent-hydra/fluent"
+	"github.com/fujiwara/fluent-agent-hydra/hydra"
 )
 
 func newDummyRecordSet(n int) *fluent.FluentRecordSet {
 	records := make([]fluent.FluentRecordType, n)
-	ts := time.Now().Unix()
+	ts := time.Now()
 	for i := 0; i < n; i++ {
 		data := make(map[string]interface{})
 		data["message"] = []byte(fmt.Sprintf("message%d", i))

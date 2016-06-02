@@ -77,7 +77,7 @@ func TestTrailRegexp(t *testing.T) {
 			d := record.GetAllData()
 			e := RegexpParsed[i]
 			if ts, ok := e["_time"]; ok {
-				if ts.(time.Time).Unix() != record.Timestamp {
+				if !ts.(time.Time).Equal(record.Timestamp) {
 					t.Errorf("expected record[%d] timestamp %s got %s", i, ts, record.Timestamp)
 				}
 				delete(e, "_time")

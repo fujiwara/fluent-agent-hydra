@@ -3,6 +3,7 @@ package fluent
 import (
 	"bytes"
 	"encoding/binary"
+	"time"
 )
 
 const (
@@ -59,7 +60,7 @@ func (b *msgpackBuffer) WriteMpBytesHead(l int) {
 	}
 }
 
-func toMsgpackTinyMessage(ts int64, key string, value []byte) []byte {
+func toMsgpackTinyMessage(ts time.Time, key string, value []byte) []byte {
 	b := new(msgpackBuffer)
 	// required capacity
 	b.Grow(8 + len(key) + len(value) + 8)
@@ -67,7 +68,7 @@ func toMsgpackTinyMessage(ts int64, key string, value []byte) []byte {
 	b.WriteByte(mp2ElmArray)
 	// ts
 	b.WriteByte(mpInt64)
-	b.WriteValue(ts)
+	b.WriteValue(ts.Unix())
 	// 1 element map {key: value}
 	b.WriteByte(mp1ElmMap)
 	// key
