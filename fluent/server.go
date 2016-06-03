@@ -26,12 +26,12 @@ package fluent
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net"
-	"reflect"
 	"strings"
 	"time"
 
@@ -40,17 +40,18 @@ import (
 
 type FluentRecord struct {
 	Tag       string
-	Timestamp int64
+	Timestamp time.Time
 	Data      map[string]interface{}
 }
 
 func (r FluentRecord) Pack() ([]byte, error) {
 	msg := []interface{}{r.Tag, r.Timestamp, r.Data}
-	if data, dumperr := toMsgpack(msg); dumperr != nil {
-		fmt.Println("Can't convert to msgpack:", msg, dumperr)
-		return nil, dumperr
+	var b bytes.Buffer
+	if err := writeMsgpack(&b, msg); err != nil {
+		fmt.Println("Can't convert to msgpack:", msg, err)
+		return nil, err
 	} else {
-		return data, nil
+		return b.Bytes(), nil
 	}
 }
 
@@ -58,7 +59,7 @@ func (r *FluentRecord) String() string {
 	_d, _ := json.Marshal(r.Data)
 	return strings.Join(
 		[]string{
-			time.Unix(r.Timestamp, 0).Format(time.RFC3339),
+			r.Timestamp.Format(time.RFC3339),
 			r.Tag,
 			string(_d),
 		},
@@ -83,13 +84,12 @@ type FluentRecordType interface {
 }
 
 type TinyFluentRecord struct {
-	Timestamp int64
+	Timestamp time.Time
 	Data      map[string]interface{}
 }
 
 func (r *TinyFluentRecord) Pack() ([]byte, error) {
-	msg := []interface{}{r.Timestamp, r.Data}
-	return toMsgpack(msg)
+	return toMsgpackRecord(r.Timestamp, r.Data)
 }
 
 func (r *TinyFluentRecord) GetData(key string) (interface{}, bool) {
@@ -105,7 +105,7 @@ func (r *TinyFluentRecord) String() string {
 	_d, _ := json.Marshal(r.Data)
 	return strings.Join(
 		[]string{
-			time.Unix(r.Timestamp, 0).Format(time.RFC3339),
+			r.Timestamp.Format(time.RFC3339),
 			string(_d),
 		},
 		"\t",
@@ -113,7 +113,7 @@ func (r *TinyFluentRecord) String() string {
 }
 
 type TinyFluentMessage struct {
-	Timestamp int64
+	Timestamp time.Time
 	FieldName string
 	Message   []byte
 }
@@ -138,7 +138,7 @@ func (r *TinyFluentMessage) String() string {
 	_d, _ := json.Marshal(r.GetAllData())
 	return strings.Join(
 		[]string{
-			time.Unix(r.Timestamp, 0).Format(time.RFC3339),
+			r.Timestamp.Format(time.RFC3339),
 			string(_d),
 		},
 		"\t",
@@ -171,11 +171,27 @@ func (rs *FluentRecordSet) PackAsForward() ([]byte, error) {
 			return nil, err
 		}
 	}
-	if data, dumperr := toMsgpack([]interface{}{rs.Tag, records}); dumperr != nil {
-		fmt.Println("Can't convert to msgpack")
-		return nil, dumperr
+	var b bytes.Buffer
+	if err := writeMsgpack(&b, []interface{}{rs.Tag, records}); err != nil {
+		return nil, err
 	} else {
-		return data, nil
+		return b.Bytes(), nil
+	}
+}
+
+type EventTimeExtension struct{}
+
+func (e *EventTimeExtension) WriteExt(v interface{}) []byte {
+	panic("WriteExt() must not be called")
+}
+
+func (e *EventTimeExtension) ReadExt(dst interface{}, src []byte) {
+	if t, ok := dst.(*time.Time); ok {
+		b := bytes.NewReader(src)
+		var sec, nanosec uint32
+		binary.Read(b, binary.BigEndian, &sec)
+		binary.Read(b, binary.BigEndian, &nanosec)
+		*t = time.Unix(int64(sec), int64(nanosec))
 	}
 }
 
@@ -198,10 +214,12 @@ func decodeRecordSet(tag []byte, entries []interface{}) (FluentRecordSet, error)
 			return FluentRecordSet{}, errors.New("Failed to decode recordSet")
 		}
 		// timestamp
-		var timestamp int64
+		var timestamp time.Time
 		switch entry[0].(type) {
 		case int, uint, int64, uint64, int32, uint32, float32, float64:
-			timestamp = toInt64(entry[0])
+			timestamp = time.Unix(toInt64(entry[0]), 0)
+		case time.Time:
+			timestamp = entry[0].(time.Time)
 		default:
 			return FluentRecordSet{}, errors.New("Failed to decode timestamp field")
 		}
@@ -223,8 +241,6 @@ func decodeRecordSet(tag []byte, entries []interface{}) (FluentRecordSet, error)
 }
 
 func DecodeEntries(conn net.Conn) ([]FluentRecordSet, error) {
-	var mh codec.MsgpackHandle
-	mh.MapType = reflect.TypeOf(map[string]interface{}(nil))
 	dec := codec.NewDecoder(conn, &mh)
 	v := []interface{}{nil, nil, nil}
 	err := dec.Decode(&v)
@@ -250,7 +266,25 @@ func DecodeEntries(conn net.Conn) ([]FluentRecordSet, error) {
 				Tag: string(tag), // XXX: byte => rune
 				Records: []FluentRecordType{
 					&TinyFluentRecord{
-						Timestamp: int64(timestamp),
+						Timestamp: time.Unix(timestamp, 0),
+						Data:      data,
+					},
+				},
+			},
+		}
+	case time.Time:
+		timestamp := timestamp_or_entries
+		data, ok := v[2].(map[string]interface{})
+		if !ok {
+			return nil, errors.New("Failed to decode data field")
+		}
+		coerceInPlace(data)
+		retval = []FluentRecordSet{
+			{
+				Tag: string(tag), // XXX: byte => rune
+				Records: []FluentRecordType{
+					&TinyFluentRecord{
+						Timestamp: timestamp,
 						Data:      data,
 					},
 				},

@@ -1,13 +1,14 @@
 package fluent_test
 
 import (
-	"github.com/fujiwara/fluent-agent-hydra/fluent"
 	"testing"
 	"time"
+
+	"github.com/fujiwara/fluent-agent-hydra/fluent"
 )
 
 func TestPack(t *testing.T) {
-	now := time.Now().Unix()
+	now := time.Now()
 	tinyRecord := &fluent.TinyFluentRecord{
 		Timestamp: now,
 		Data:      map[string]interface{}{"message": "text"},

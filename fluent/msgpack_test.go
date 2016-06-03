@@ -1,17 +1,17 @@
 package fluent_test
 
 import (
-	"github.com/fujiwara/fluent-agent-hydra/fluent"
-	"github.com/ugorji/go/codec"
 	"testing"
+	"time"
+
+	"github.com/fujiwara/fluent-agent-hydra/fluent"
 )
 
 var (
 	tag   = "test.tag"
-	ts    = int64(1417269412)
+	ts    = time.Unix(1417269412, 0)
 	key   = "testkey"
 	value = []byte("datavalue datavalue datavalue datavalue datavalue datavalue datavalue datavalue datavalue datavalue datavalue datavalue datavalue datavalue datavalue datavalue ")
-	mh    codec.MsgpackHandle
 )
 
 func BenchmarkTinyFluentMessage(b *testing.B) {

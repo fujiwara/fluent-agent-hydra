@@ -71,7 +71,7 @@ func (c *Context) RunProcess(p Process) {
 }
 
 func NewFluentRecordSet(tag, key string, format FileFormat, mod *RecordModifier, reg *Regexp, buffer []byte) *fluent.FluentRecordSet {
-	t := time.Now().Unix()
+	t := time.Now()
 	messages := bytes.Split(buffer, LineSeparator)
 	records := make([]fluent.FluentRecordType, 0, len(messages))
 	for _, msg := range messages {

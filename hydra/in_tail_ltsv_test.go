@@ -75,7 +75,7 @@ func TestTrailLTSV(t *testing.T) {
 				t.Errorf("unexpected record %v", record)
 			}
 			if ts, ok := LTSVParsed[i]["_time"]; ok {
-				if ts.(time.Time).Unix() != record.Timestamp {
+				if !ts.(time.Time).Equal(record.Timestamp) {
 					t.Errorf("expected timestamp %s got %s", ts, record.Timestamp)
 				}
 			}
