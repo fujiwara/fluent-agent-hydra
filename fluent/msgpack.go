@@ -31,7 +31,7 @@ const (
 var (
 	mh codec.MsgpackHandle
 
-	EnableEventTime = true
+	EnableEventTime = false
 )
 
 func init() {
