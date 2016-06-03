@@ -3,7 +3,12 @@ package fluent
 import (
 	"bytes"
 	"encoding/binary"
+	"io"
+	"reflect"
+	"sync"
 	"time"
+
+	"github.com/ugorji/go/codec"
 )
 
 const (
@@ -24,12 +29,45 @@ const (
 	mpEventTimeType      = 0x00
 )
 
+var (
+	mh   codec.MsgpackHandle
+	once = new(sync.Once)
+
+	EnableEventTime = false
+)
+
+func mpHandle() *codec.MsgpackHandle {
+	once.Do(func() {
+		mh.MapType = reflect.TypeOf(map[string]interface{}(nil))
+		mh.SetBytesExt(reflect.TypeOf(time.Time{}), 0, &EventTimeExtension{})
+	})
+	return &mh
+}
+
+func toMsgpack(w io.Writer, val interface{}) error {
+	return codec.NewEncoder(w, mpHandle()).Encode(val)
+}
+
 type msgpackBuffer struct {
 	bytes.Buffer
 }
 
 func (b *msgpackBuffer) WriteValue(v interface{}) {
 	binary.Write(b, binary.BigEndian, v)
+}
+
+func (b *msgpackBuffer) WriteTime(ts time.Time) {
+	if EnableEventTime {
+		// EventTime
+		b.WriteByte(mpExtension8)
+		b.WriteByte(mpEventTimeType)
+		b.WriteValue(uint32(ts.Unix()))
+		b.WriteValue(uint32(ts.Nanosecond()))
+	} else {
+		// int64
+		b.WriteByte(mpInt64)
+		b.WriteValue(ts.Unix())
+	}
 }
 
 func (b *msgpackBuffer) WriteMpStringHead(l int) {
@@ -69,17 +107,7 @@ func toMsgpackTinyMessage(ts time.Time, key string, value []byte) []byte {
 	// 2 elments array [ts, {key: value}]
 	b.WriteByte(mp2ElmArray)
 	// ts
-	if ts.UnixNano() == 0 {
-		// int64
-		b.WriteByte(mpInt64)
-		b.WriteValue(ts.Unix())
-	} else {
-		// EventTime
-		b.WriteByte(mpExtension8)
-		b.WriteByte(mpEventTimeType)
-		b.WriteValue(ts.Unix())
-		b.WriteValue(ts.UnixNano())
-	}
+	b.WriteTime(ts)
 	// 1 element map {key: value}
 	b.WriteByte(mp1ElmMap)
 	// key
@@ -89,6 +117,19 @@ func toMsgpackTinyMessage(ts time.Time, key string, value []byte) []byte {
 	b.WriteMpStringHead(len(value))
 	b.Write(value)
 	return b.Bytes()
+}
+
+func toMsgpackRecord(ts time.Time, data map[string]interface{}) ([]byte, error) {
+	b := new(msgpackBuffer)
+	// 2 elments array [ts, data]
+	b.WriteByte(mp2ElmArray)
+	// ts
+	b.WriteTime(ts)
+	// data
+	if err := toMsgpack(b, data); err != nil {
+		return []byte{}, err
+	}
+	return b.Bytes(), nil
 }
 
 func toMsgpackRecordSet(tag string, bin []byte) []byte {
