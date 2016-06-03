@@ -39,12 +39,8 @@ func init() {
 	mh.SetBytesExt(reflect.TypeOf(time.Time{}), 0, &EventTimeExtension{})
 }
 
-func mpHandle() *codec.MsgpackHandle {
-	return &mh
-}
-
-func toMsgpack(w io.Writer, val interface{}) error {
-	return codec.NewEncoder(w, mpHandle()).Encode(val)
+func writeMsgpack(w io.Writer, val interface{}) error {
+	return codec.NewEncoder(w, &mh).Encode(val)
 }
 
 type msgpackBuffer struct {
@@ -125,7 +121,7 @@ func toMsgpackRecord(ts time.Time, data map[string]interface{}) ([]byte, error) 
 	// ts
 	b.WriteTime(ts)
 	// data
-	if err := toMsgpack(b, data); err != nil {
+	if err := writeMsgpack(b, data); err != nil {
 		return []byte{}, err
 	}
 	return b.Bytes(), nil

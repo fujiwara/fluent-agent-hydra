@@ -47,7 +47,7 @@ type FluentRecord struct {
 func (r FluentRecord) Pack() ([]byte, error) {
 	msg := []interface{}{r.Tag, r.Timestamp, r.Data}
 	var b bytes.Buffer
-	if err := toMsgpack(&b, msg); err != nil {
+	if err := writeMsgpack(&b, msg); err != nil {
 		fmt.Println("Can't convert to msgpack:", msg, err)
 		return nil, err
 	} else {
@@ -172,7 +172,7 @@ func (rs *FluentRecordSet) PackAsForward() ([]byte, error) {
 		}
 	}
 	var b bytes.Buffer
-	if err := toMsgpack(&b, []interface{}{rs.Tag, records}); err != nil {
+	if err := writeMsgpack(&b, []interface{}{rs.Tag, records}); err != nil {
 		return nil, err
 	} else {
 		return b.Bytes(), nil
@@ -241,7 +241,7 @@ func decodeRecordSet(tag []byte, entries []interface{}) (FluentRecordSet, error)
 }
 
 func DecodeEntries(conn net.Conn) ([]FluentRecordSet, error) {
-	dec := codec.NewDecoder(conn, mpHandle())
+	dec := codec.NewDecoder(conn, &mh)
 	v := []interface{}{nil, nil, nil}
 	err := dec.Decode(&v)
 	if err != nil {
@@ -304,7 +304,7 @@ func DecodeEntries(conn net.Conn) ([]FluentRecordSet, error) {
 		entries := make([]interface{}, 0)
 		for {
 			entry := make([]interface{}, 0)
-			err := codec.NewDecoder(reader, mpHandle()).Decode(&entry)
+			err := codec.NewDecoder(reader, &mh).Decode(&entry)
 			if err == io.EOF {
 				break
 			} else if err != nil {
