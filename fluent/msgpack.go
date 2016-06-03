@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"io"
 	"reflect"
-	"sync"
 	"time"
 
 	"github.com/ugorji/go/codec"
@@ -30,17 +29,17 @@ const (
 )
 
 var (
-	mh   codec.MsgpackHandle
-	once = new(sync.Once)
+	mh codec.MsgpackHandle
 
-	EnableEventTime = false
+	EnableEventTime = true
 )
 
+func init() {
+	mh.MapType = reflect.TypeOf(map[string]interface{}(nil))
+	mh.SetBytesExt(reflect.TypeOf(time.Time{}), 0, &EventTimeExtension{})
+}
+
 func mpHandle() *codec.MsgpackHandle {
-	once.Do(func() {
-		mh.MapType = reflect.TypeOf(map[string]interface{}(nil))
-		mh.SetBytesExt(reflect.TypeOf(time.Time{}), 0, &EventTimeExtension{})
-	})
 	return &mh
 }
 
