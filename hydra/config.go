@@ -28,6 +28,7 @@ type Config struct {
 	Logs             []*ConfigLogfile
 	Receiver         *ConfigReceiver
 	Monitor          *ConfigMonitor
+	SubSecondTime    bool
 }
 
 type ConfigServer struct {

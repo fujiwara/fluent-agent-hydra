@@ -151,6 +151,11 @@ func NewFluentRecordRegexp(key string, line []byte, r *Regexp) *fluent.TinyFluen
 func Run(config *Config) *Context {
 	c := NewContext()
 
+	if config.SubSecondTime {
+		fluent.EnableEventTime = true
+		log.Println("[info] SubSecondTime enabled. (for Fluentd 0.14 or later only!)")
+	}
+
 	if config.ReadBufferSize > 0 {
 		ReadBufferSize = config.ReadBufferSize
 		log.Println("[info] set ReadBufferSize", ReadBufferSize)
