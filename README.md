@@ -18,6 +18,8 @@ This agent is inspired by [fluent-agent-lite](https://github.com/tagomoris/fluen
   - includes simplified on-memory queue.
 - Stats monitor httpd server
   - serve an agent stats by JSON format.
+- Supports sub-second time
+  - Supported by Fluentd 0.14 or later. When you use Fluentd <= 0.12 as forwarded servers, fluentd will not accept records including sub-second time.
 
 ## Installation
 
@@ -67,6 +69,7 @@ TagPrefix = "nginx"       # "nginx.access", "nginx.error"
 FieldName = "message"     # default "message"
 ReadBufferSize = 1048576  # default 64KB.
 ServerRoundRobin = true   # default false
+SubSecondTime = true      # default false. for Fluentd 0.14 or later only
 
 # tailing log file (in_tail)
 [[Logs]]
