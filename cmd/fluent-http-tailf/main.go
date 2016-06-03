@@ -107,7 +107,7 @@ func runDumper(dir string, format string, option OutputOption) {
 		for _, record := range rs.Records {
 			record, _ := record.(*fluent.TinyFluentRecord)
 			if option.IncludeTime {
-				fmt.Fprint(fh, time.Unix(record.Timestamp, 0).Format(time.RFC3339), "\t")
+				fmt.Fprint(fh, record.Timestamp.Format(time.RFC3339), "\t")
 			}
 			if option.IncludeTag {
 				fmt.Fprint(fh, rs.Tag, "\t")
@@ -265,7 +265,7 @@ func writeResponse(encoder Encoder, w http.ResponseWriter, rs fluent.FluentRecor
 		record, _ := record.(*fluent.TinyFluentRecord)
 		data := record.GetAllData()
 		if option.IncludeTime {
-			fmt.Fprint(w, time.Unix(record.Timestamp, 0).Format(time.RFC3339), "\t")
+			fmt.Fprint(w, record.Timestamp.Format(time.RFC3339), "\t")
 		}
 		if option.IncludeTag {
 			fmt.Fprint(w, rs.Tag, "\t")
