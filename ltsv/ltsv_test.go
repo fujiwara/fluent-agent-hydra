@@ -21,7 +21,7 @@ func TestLTSVEncode(t *testing.T) {
 	encoder := ltsv.NewEncoder(buf)
 	encoder.Encode(testMap)
 	if string(buf.Bytes()) != compareLTSV {
-		t.Errorf("unexpected encoded", string(buf.Bytes()))
+		t.Error("unexpected encoded", string(buf.Bytes()))
 	}
 }
 

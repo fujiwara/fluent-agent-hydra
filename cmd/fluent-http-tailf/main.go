@@ -233,7 +233,6 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 			f.Flush()
 		}
 	}
-	return
 }
 
 func matchTag(matcher, tag string) bool {

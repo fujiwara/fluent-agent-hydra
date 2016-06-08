@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/fujiwara/fluent-agent-hydra/hydra"
 	"os"
+
+	"github.com/fujiwara/fluent-agent-hydra/hydra"
 )
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("Usage\ntail-f filename\n")
+		fmt.Println("Usage\ntail-f filename")
 		os.Exit(1)
 	}
 	filename, err := hydra.Rel2Abs(os.Args[1])
@@ -28,7 +29,6 @@ func main() {
 	inTail, err := hydra.NewInTail(config, watcher, messageCh, monitorCh)
 	go watcher.Run()
 	go inTail.Run()
-	done := make(chan interface{})
 	for {
 		recordSet := <-messageCh
 		for _, record := range recordSet.Records {
@@ -38,5 +38,4 @@ func main() {
 			}
 		}
 	}
-	<-done
 }

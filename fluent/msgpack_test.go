@@ -16,7 +16,11 @@ var (
 
 func BenchmarkTinyFluentMessage(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		msg := &fluent.TinyFluentMessage{ts, key, value}
+		msg := &fluent.TinyFluentMessage{
+			Timestamp: ts,
+			FieldName: key,
+			Message:   value,
+		}
 		packed, _ := msg.Pack()
 		b.SetBytes(int64(len(packed)))
 	}
@@ -24,7 +28,10 @@ func BenchmarkTinyFluentMessage(b *testing.B) {
 
 func BenchmarkTinyFluentRecord(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		msg := &fluent.TinyFluentRecord{ts, map[string]interface{}{key: value}}
+		msg := &fluent.TinyFluentRecord{
+			Timestamp: ts,
+			Data:      map[string]interface{}{key: value},
+		}
 		packed, _ := msg.Pack()
 		b.SetBytes(int64(len(packed)))
 	}
