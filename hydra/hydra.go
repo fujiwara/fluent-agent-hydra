@@ -113,6 +113,10 @@ func NewFluentRecordLTSV(key string, line []byte) *fluent.TinyFluentRecord {
 	s := string(line)
 	data := make(map[string]interface{})
 	for _, col := range strings.Split(s, LTSVColSeparatorStr) {
+		if col == "" {
+			// ignore empty field
+			continue
+		}
 		pair := strings.SplitN(col, LTSVDataSeparatorStr, 2)
 		if len(pair) == 2 {
 			data[pair[0]] = pair[1]

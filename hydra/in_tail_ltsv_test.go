@@ -19,13 +19,15 @@ var (
 		"foo:123\n",
 		strings.Join([]string{"foo", "bar:baz"}, "\t") + "\n",
 		"invalid LTSV line\n",
+		"bar:baz\t\n",
 	}
 	LTSVParsed = []map[string]interface{}{
 		{"foo": int64(1), "bar": "2", "_time": time.Date(2015, time.May, 26, 11, 22, 33, 0, time.UTC)},
 		{"foo": "AAA", "bar": "BBB", "_time": time.Date(2013, time.November, 22, 04, 21, 31, 0, JST)},
 		{"foo": int64(123)},
-		{"bar": "baz"},
+		{"bar": "baz", "message": "foo\tbar:baz"},
 		{"message": "invalid LTSV line"},
+		{"bar": "baz"},
 	}
 )
 
@@ -77,6 +79,11 @@ func TestTrailLTSV(t *testing.T) {
 			if ts, ok := LTSVParsed[i]["_time"]; ok {
 				if !ts.(time.Time).Equal(record.Timestamp) {
 					t.Errorf("expected timestamp %s got %s", ts, record.Timestamp)
+				}
+			}
+			if message, ok := record.GetData("message"); ok {
+				if message != LTSVParsed[i]["message"] {
+					t.Errorf("unexpected record %v", record)
 				}
 			}
 			i++
