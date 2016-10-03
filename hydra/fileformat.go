@@ -47,7 +47,7 @@ var (
 	TimeFormatApache = TimeFormat("02/Jan/2006:15:04:05 -0700")
 	TimeFormatNginx  = TimeFormat("02/Jan/2006:15:04:05 -0700")
 	TimeFormatSyslog = TimeFormat("Jan 02 15:04:05")
-	TimeFormatUnix   = TimeFormat("UNIX")
+	TimeFormatUnix   = TimeFormat("unix")
 	TimeEpoch        = time.Unix(0, 0)
 )
 

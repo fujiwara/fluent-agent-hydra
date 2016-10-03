@@ -50,7 +50,7 @@ func TestTimeConverter(t *testing.T) {
 }
 
 func TestTimeConverterUnix(t *testing.T) {
-	tc := hydra.TimeConverter("UNIX")
+	tc := hydra.TimeConverter("unix")
 	ts, err := tc.Convert("1469429601.376390000")
 	if err != nil {
 		t.Error(err)
