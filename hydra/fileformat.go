@@ -86,7 +86,13 @@ func (c TimeConverter) Convert(v string) (time.Time, error) {
 			return TimeEpoch, err
 		}
 		if len(_v) == 2 {
-			nsec, err = strconv.ParseInt(_v[1], 10, 64)
+			s := _v[1]
+			if len(s) < 9 {
+				s = s + strings.Repeat("0", 9-len(s))
+			} else if len(s) > 9 {
+				s = s[:9]
+			}
+			nsec, err = strconv.ParseInt(s, 10, 64)
 			if err != nil {
 				nsec = 0
 			}

@@ -66,6 +66,22 @@ func TestTimeConverterUnix(t *testing.T) {
 	if ts.Unix() != 1469429601 || ts.Nanosecond() != 0 {
 		t.Errorf("1469429601 sec != %s", ts)
 	}
+
+	ts, err = tc.Convert("1469429601.123")
+	if err != nil {
+		t.Error(err)
+	}
+	if ts.Unix() != 1469429601 || ts.Nanosecond() != 123000000 {
+		t.Errorf("1469429601.123 sec != %s", ts)
+	}
+
+	ts, err = tc.Convert("1469429601.123456789123")
+	if err != nil {
+		t.Error(err)
+	}
+	if ts.Unix() != 1469429601 || ts.Nanosecond() != 123456789 {
+		t.Errorf("1469429601.123456789123 sec != %s", ts)
+	}
 }
 
 func BenchmarkConvertMap(b *testing.B) {
