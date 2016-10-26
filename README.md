@@ -131,6 +131,34 @@ Types = "column_name:integer"
 
 Its type is converted to int64.
 
+### Hostname field support
+
+To add the current hostname to a record read from a log, the config file option `HostnameKey` may be specified in the global settings or `[[Logs]]` section. This configures the field name that will hold the hostname, as determined by [os.Hostname()](http://golang.org/pkg/os/#Hostname).
+
+Currently, the hostname is only added when tailing logs with formats other than "None". If a key of the same name is already parsed from the log (for example, if reading from syslog which has the hostname in the message), the value parsed is preserved.  Logs read in by receivers are not affected.
+
+Example HostnameKey.
+
+```toml
+# global settings
+HostnameKey = "host"      # default ""
+
+[[Logs]]
+# uses global HostnameKey
+File = "/var/log/nginx/access.log"
+Tag = "access"
+Format = "LTSV"
+
+[[Logs]]
+# "host" will be captured via syslog regexp
+# store os.Hostname() into a different key
+File = "/var/log/messages"
+HostnameKey = "fqdn"
+Format = "Regexp"
+Regexp = "syslog"
+TimeFormat = "syslog"
+```
+
 ## Stats monitor
 
 For enabling stats monitor, specify command line option `-m host:port` or `[Monitor]` section in config file.

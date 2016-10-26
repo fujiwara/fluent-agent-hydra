@@ -13,6 +13,9 @@ func TestReadConfig(t *testing.T) {
 		t.Error("read config failed", err)
 	}
 	fmt.Printf("%#v\n", config)
+	if config.HostnameKey != "host" {
+		t.Error("invalid HostnameKey got", config.HostnameKey, "expected", "host")
+	}
 	if config.TagPrefix != "foo" {
 		t.Error("invalid TagPrefix got", config.TagPrefix, "expected", "foo")
 	}
@@ -42,6 +45,7 @@ func TestReadConfig(t *testing.T) {
 	if c := config.Logs[0]; c.Tag != "foo.tag1" ||
 		c.File != "/tmp/foo.log" ||
 		c.FieldName != "message" ||
+		c.HostnameKey != "fqdn" ||
 		c.TimeParse != false {
 		t.Errorf("invalid Logs[0] got %#v", c)
 	}
@@ -49,6 +53,7 @@ func TestReadConfig(t *testing.T) {
 	if c := config.Logs[1]; c.Tag != "foo.tag2" ||
 		c.File != "/tmp/bar.log" ||
 		c.FieldName != "msg" ||
+		c.HostnameKey != "host" ||
 		c.TimeParse != false {
 		t.Errorf("invalid Logs[1] got %#v", c)
 	}

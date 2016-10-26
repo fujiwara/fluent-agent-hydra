@@ -2,6 +2,7 @@ package hydra
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -62,6 +63,10 @@ var (
 	convertFloat FloatConverter
 )
 
+var (
+	hostname, hostnameErr = os.Hostname()
+)
+
 func (c BoolConverter) Convert(v string) (interface{}, error) {
 	return strconv.ParseBool(v)
 }
@@ -85,12 +90,18 @@ type ConvertMap struct {
 
 type RecordModifier struct {
 	convertMap    ConvertMap
+	hostnameKey   string
 	timeParse     bool
 	timeKey       string
 	timeConverter TimeConverter
 }
 
 func (m *RecordModifier) Modify(r *fluent.TinyFluentRecord) {
+	if m.hostnameKey != "" && hostnameErr == nil {
+		if _, ok := r.Data[m.hostnameKey]; ok == false {
+			r.Data[m.hostnameKey] = hostname
+		}
+	}
 	if m.convertMap.ConverterMap != nil {
 		m.convertMap.ConvertTypes(r.Data)
 	}
