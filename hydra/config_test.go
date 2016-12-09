@@ -17,7 +17,7 @@ func TestReadConfig(t *testing.T) {
 		t.Error("invalid TagPrefix got", config.TagPrefix, "expected", "foo")
 	}
 	if config.FieldName != "message" {
-		t.Error("invalid FieldName got", config.FieldName, "expected", "msg")
+		t.Error("invalid FieldName got", config.FieldName, "expected", "message")
 	}
 	if config.ReadBufferSize != 1024 {
 		t.Error("invalid ReadBufferSize got", config.ReadBufferSize)
