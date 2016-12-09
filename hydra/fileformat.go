@@ -47,6 +47,8 @@ var (
 	TimeFormatApache = TimeFormat("02/Jan/2006:15:04:05 -0700")
 	TimeFormatNginx  = TimeFormat("02/Jan/2006:15:04:05 -0700")
 	TimeFormatSyslog = TimeFormat("Jan 02 15:04:05")
+	TimeFormatUnix   = TimeFormat("unix")
+	TimeEpoch        = time.Unix(0, 0)
 )
 
 var (
@@ -75,7 +77,30 @@ func (c FloatConverter) Convert(v string) (interface{}, error) {
 }
 
 func (c TimeConverter) Convert(v string) (time.Time, error) {
-	return time.Parse(string(c), v)
+	if TimeFormat(c) == TimeFormatUnix {
+		_v := strings.SplitN(v, ".", 2)
+		var sec, nsec int64
+		var err error
+		sec, err = strconv.ParseInt(_v[0], 10, 64)
+		if err != nil {
+			return TimeEpoch, err
+		}
+		if len(_v) == 2 {
+			s := _v[1]
+			if len(s) < 9 {
+				s = s + strings.Repeat("0", 9-len(s))
+			} else if len(s) > 9 {
+				s = s[:9]
+			}
+			nsec, err = strconv.ParseInt(s, 10, 64)
+			if err != nil {
+				nsec = 0
+			}
+		}
+		return time.Unix(sec, nsec), nil
+	} else {
+		return time.Parse(string(c), v)
+	}
 }
 
 type ConvertMap struct {

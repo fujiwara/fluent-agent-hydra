@@ -94,7 +94,7 @@ TimeKey = "timestamp" # default "time"
 # TimeFormat is passed to Golang's time.Parse().
 # http://golang.org/pkg/time/#Parse
 # default time.RFC3339 == "2006-01-02T15:04:05Z07:00"
-# "apache" | "nginx" | "syslog" is also available
+# "apache" | "nginx" | "syslog" | "unix" is also available
 TimeFormat = "02/Jan/2006:15:04:05 Z0700"
 
 [[Logs]]

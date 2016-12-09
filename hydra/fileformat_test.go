@@ -49,6 +49,41 @@ func TestTimeConverter(t *testing.T) {
 	}
 }
 
+func TestTimeConverterUnix(t *testing.T) {
+	tc := hydra.TimeConverter("unix")
+	ts, err := tc.Convert("1469429601.376390000")
+	if err != nil {
+		t.Error(err)
+	}
+	if ts.Unix() != 1469429601 || ts.Nanosecond() != 376390000 {
+		t.Errorf("1469429601.376390000 sec != %s", ts)
+	}
+
+	ts, err = tc.Convert("1469429601")
+	if err != nil {
+		t.Error(err)
+	}
+	if ts.Unix() != 1469429601 || ts.Nanosecond() != 0 {
+		t.Errorf("1469429601 sec != %s", ts)
+	}
+
+	ts, err = tc.Convert("1469429601.123")
+	if err != nil {
+		t.Error(err)
+	}
+	if ts.Unix() != 1469429601 || ts.Nanosecond() != 123000000 {
+		t.Errorf("1469429601.123 sec != %s", ts)
+	}
+
+	ts, err = tc.Convert("1469429601.123456789123")
+	if err != nil {
+		t.Error(err)
+	}
+	if ts.Unix() != 1469429601 || ts.Nanosecond() != 123456789 {
+		t.Errorf("1469429601.123456789123 sec != %s", ts)
+	}
+}
+
 func BenchmarkConvertMap(b *testing.B) {
 	convertMap := hydra.NewConvertMap("user_id:integer,paid:bool,paid_user_amount:float")
 	b.ResetTimer()
