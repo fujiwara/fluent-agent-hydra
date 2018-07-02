@@ -20,17 +20,17 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	messageCh, monitorCh := hydra.NewChannel()
+	c := hydra.NewContext()
 	config := &hydra.ConfigLogfile{
 		Tag:       "dummy",
 		File:      filename,
 		FieldName: "message",
 	}
-	inTail, err := hydra.NewInTail(config, watcher, messageCh, monitorCh)
-	go watcher.Run()
-	go inTail.Run()
+	inTail, err := hydra.NewInTail(config, watcher)
+	c.RunProcess(inTail)
+	c.RunProcess(watcher)
 	for {
-		recordSet := <-messageCh
+		recordSet := <-c.MessageCh
 		for _, record := range recordSet.Records {
 			b, ok := record.GetData("message")
 			if ok {
