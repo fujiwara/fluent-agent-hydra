@@ -214,6 +214,7 @@ func (f *Fluent) Send(buffer []byte) (err error) {
 		f.recordError(err)
 		return
 	} else {
+		f.conn.SetWriteDeadline(time.Now().Add(f.Config.Timeout))
 		_, err = f.conn.Write(buffer)
 		if err != nil {
 			f.recordError(err)
