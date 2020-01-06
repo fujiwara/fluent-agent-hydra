@@ -21,14 +21,13 @@ jobs:
 
     - name: setup tools
       run: |
-        mkdir ~/bin
         GO111MODULE=off go get github.com/mitchellh/gox
-        curl -sL https://github.com/tcnksm/ghr/releases/download/v0.13.0/ghr_v0.13.0_linux_amd64.tar.gz | tar zxvf - && install ghr_v0.13.0_linux_amd64/ghr ~/bin/
+        curl -sL https://github.com/tcnksm/ghr/releases/download/v0.13.0/ghr_v0.13.0_linux_amd64.tar.gz | tar zxvf - && install ghr_v0.13.0_linux_amd64/ghr ~/go/bin/
 
     - name: dist
-      run: PATH=~/bin:$PATH make binary
+      run: PATH=~/go/bin:$PATH make binary
 
     - name: release
-      run: PATH=~/bin:$PATH make release
+      run: PATH=~/go/bin:$PATH make release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
