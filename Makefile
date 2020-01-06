@@ -24,5 +24,9 @@ test:
 	cd hydra && go test
 
 binary:
-	cd cmd/fluent-agent-hydra && gox -os="linux darwin windows" -arch="amd64 386" -output "../../pkg/{{.Dir}}-${GIT_VER}-{{.OS}}-{{.Arch}}" -ldflags "-X main.version=${GIT_VER} -X main.buildDate=${DATE}"
+	cd cmd/fluent-agent-hydra && \
+	CGO_ENABLED=0 gox -os="linux darwin windows" -arch="amd64 386" -output "../../pkg/{{.Dir}}-${GIT_VER}-{{.OS}}-{{.Arch}}" -ldflags "-X main.version=${GIT_VER} -X main.buildDate=${DATE}"
 	cd pkg && find . -name "*${GIT_VER}*" -type f -exec zip {}.zip {} \;
+
+release:
+	ghr -u fujiwara -r fluent-agent-hydra -n "$(GIT_VER)" $(GIT_VER) pkg/
