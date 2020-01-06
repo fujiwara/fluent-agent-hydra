@@ -1,9 +1,10 @@
 language: go
 
+env:
+  - GO111MODULE=on
+
 go:
-  - 1.5
-  - 1.6
+  - 1.13
   - tip
 
-install: make get-deps
-
+install: make install
