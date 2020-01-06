@@ -1,0 +1,34 @@
+name: Release
+on:
+  push:
+    branches:
+      - "!**/*"
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up Go
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.13
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v1
+
+    - name: setup tools
+      run: |
+        mkdir ~/bin
+        GO111MODULE=off go get github.com/mitchellh/gox
+        curl -sL https://github.com/tcnksm/ghr/releases/download/v0.13.0/ghr_v0.13.0_linux_amd64.tar.gz | tar zxvf - && install ghr_v0.13.0_linux_amd64/ghr ~/bin/
+
+    - name: dist
+      run: PATH=~/bin:$PATH make binary
+
+    - name: release
+      run: PATH=~/bin:$PATH make release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
