@@ -85,18 +85,21 @@ func NewFluentRecordSet(tag, key string, format FileFormat, mod *RecordModifier,
 			records = append(records, r)
 		case FormatLTSV:
 			r := NewFluentRecordLTSV(key, msg)
+			r.Timestamp = t
 			if mod != nil {
 				mod.Modify(r)
 			}
 			records = append(records, r)
 		case FormatJSON:
 			r := NewFluentRecordJSON(key, msg)
+			r.Timestamp = t
 			if mod != nil {
 				mod.Modify(r)
 			}
 			records = append(records, r)
 		case FormatRegexp:
 			r := NewFluentRecordRegexp(key, msg, reg)
+			r.Timestamp = t
 			if mod != nil {
 				mod.Modify(r)
 			}
