@@ -1,5 +1,6 @@
 GIT_VER := $(shell git describe --tags)
 DATE := $(shell date +%Y-%m-%dT%H:%M:%S%z)
+GOPATH ?= ${HOME}/go
 
 .PHONY: test binary all fmt clean
 
