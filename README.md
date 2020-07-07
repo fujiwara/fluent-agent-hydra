@@ -2,7 +2,8 @@
 
 A Fluentd log agent.
 
-[![Build status](https://api.travis-ci.org/fujiwara/fluent-agent-hydra.svg?branch=master)](https://travis-ci.org/fujiwara/fluent-agent-hydra)
+[![](https://github.com/fujiwara/fluent-agent-hydra/workflows/Go/badge.svg)](https://github.com/fujiwara/fluent-agent-hydra/actions?query=workflow%3AGo+branch%3Amaster)
+[![](https://github.com/fujiwara/fluent-agent-hydra/workflows/Release/badge.svg)](https://github.com/fujiwara/fluent-agent-hydra/actions?query=workflow%3ARelease+branch%3Amaster)
 
 This agent is inspired by [fluent-agent-lite](https://github.com/tagomoris/fluent-agent-lite).
 
