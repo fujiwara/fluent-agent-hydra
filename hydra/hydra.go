@@ -2,13 +2,13 @@ package hydra
 
 import (
 	"bytes"
-	"encoding/json"
 	"log"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/a8m/djson"
 	"github.com/fujiwara/fluent-agent-hydra/fluent"
 )
 
@@ -132,9 +132,9 @@ func NewFluentRecordLTSV(key string, line []byte) *fluent.TinyFluentRecord {
 }
 
 func NewFluentRecordJSON(key string, line []byte) *fluent.TinyFluentRecord {
-	data := make(map[string]interface{})
-	err := json.Unmarshal(line, &data)
+	data, err := djson.DecodeObject(line)
 	if err != nil {
+		data = make(map[string]interface{}, 1)
 		data[key] = string(line)
 	}
 	return &fluent.TinyFluentRecord{Data: data}
