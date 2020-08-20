@@ -110,6 +110,7 @@ func Rel2Abs(filename string) (string, error) {
 func NewInTail(config *ConfigLogfile, watcher *Watcher) (*InTail, error) {
 	modifier := &RecordModifier{
 		convertMap:    config.ConvertMap,
+		hostnameKey:   config.HostnameKey,
 		timeParse:     config.TimeParse,
 		timeKey:       config.TimeKey,
 		timeConverter: TimeConverter(config.TimeFormat),
