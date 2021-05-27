@@ -195,11 +195,33 @@ func (e *EventTimeExtension) ReadExt(dst interface{}, src []byte) {
 	}
 }
 
+func coerceInPlaceInArray(data []interface{}) []interface{} {
+	var newArr = make([]interface{}, len(data))
+	for i, av := range data {
+		switch v2_ := av.(type) {
+		case []byte:
+			newArr[i] = string(v2_)
+		case []interface{}:
+			na := coerceInPlaceInArray(v2_)
+			newArr[i] = na
+		case map[string]interface{}:
+			coerceInPlace(v2_)
+			newArr[i] = v2_
+		default:
+			newArr[i] = av
+		}
+	}
+	return newArr
+}
+
 func coerceInPlace(data map[string]interface{}) {
 	for k, v := range data {
 		switch v_ := v.(type) {
 		case []byte:
 			data[k] = string(v_) // XXX: byte => rune
+		case []interface{}:
+			na := coerceInPlaceInArray(v_)
+			data[k] = na
 		case map[string]interface{}:
 			coerceInPlace(v_)
 		}
