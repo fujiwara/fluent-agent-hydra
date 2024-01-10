@@ -232,7 +232,7 @@ func (t *TimeFormat) UnmarshalText(text []byte) error {
 	case "apache":
 		*t = TimeFormatApache
 	case "nginx":
-		*t = TimeFormatApache
+		*t = TimeFormatNginx
 	case "syslog":
 		*t = TimeFormatSyslog
 	default:
