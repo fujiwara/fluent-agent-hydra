@@ -20,6 +20,7 @@ const (
 var DefaultTimeFormat = TimeFormat(time.RFC3339)
 
 type Config struct {
+	HostnameKey      string
 	TagPrefix        string
 	FieldName        string
 	ReadBufferSize   int
@@ -37,15 +38,16 @@ type ConfigServer struct {
 }
 
 type ConfigLogfile struct {
-	Tag        string
-	File       string
-	FieldName  string
-	Format     FileFormat
-	Regexp     *Regexp
-	ConvertMap ConvertMap `toml:"Types"`
-	TimeParse  bool
-	TimeKey    string
-	TimeFormat TimeFormat
+	HostnameKey string
+	Tag         string
+	File        string
+	FieldName   string
+	Format      FileFormat
+	Regexp      *Regexp
+	ConvertMap  ConvertMap `toml:"Types"`
+	TimeParse   bool
+	TimeKey     string
+	TimeFormat  TimeFormat
 }
 
 type ConfigReceiver struct {
@@ -149,6 +151,9 @@ func (cl *ConfigLogfile) IsStdin() bool {
 func (cl *ConfigLogfile) Restrict(c *Config) {
 	if cl.FieldName == "" {
 		cl.FieldName = c.FieldName
+	}
+	if cl.HostnameKey == "" {
+		cl.HostnameKey = c.HostnameKey
 	}
 	if c.TagPrefix != "" {
 		cl.Tag = c.TagPrefix + "." + cl.Tag
